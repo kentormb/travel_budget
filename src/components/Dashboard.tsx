@@ -96,7 +96,7 @@ export function Dashboard() {
     return (
         <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground">
           <p>No expenses yet</p>
-          <p className="text-sm">Add your first expense using the + button below</p>
+          <p className="text-sm">You need to add at least one expense to show statistics</p>
         </div>
     );
   }
