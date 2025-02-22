@@ -19,7 +19,6 @@ const INITIAL_FORM_STATE: ExpenseFormData = {
   amount: 0,
   currency: "EUR",
   date: new Date().toISOString().split('T')[0],
-  // @ts-ignore
   endDate: new Date().toISOString().split('T')[0],
   categoryId: "",
   description: "",

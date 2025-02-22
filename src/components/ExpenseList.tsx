@@ -6,11 +6,7 @@ import { useTrip } from "@/contexts/TripContext";
 import { toast } from "sonner";
 import { ExpenseGroup } from "./expense/ExpenseGroup";
 import {isFutureDate, dailyAverageLabels, splitExpenses} from "@/utils/helpers";
-import {ExpenseFormData} from "@/types/expense.ts";
-
-interface ExpenseListProps {
-  query?: string;
-}
+import { ExpenseListProps } from "@/types/expense";
 
 const groupExpensesByDate = (expenses: any[]) => {
   const groups: { [key: string]: any[] } = {};
@@ -134,7 +130,7 @@ export function ExpenseList({ query }: ExpenseListProps) {
   return (
       <>
         {avg &&
-            <div className="w-full bg-gray-100 p-4 rounded-md mb-4">
+            <div className="w-full bg-gray-100 p-4 rounded-md mb-2">
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="text-xs text-gray-500">Daily Average</p>
@@ -153,7 +149,7 @@ export function ExpenseList({ query }: ExpenseListProps) {
             </div>
         }
 
-        <ScrollArea className="h-[74vh] w-full rounded-md">
+        <ScrollArea className="expenses-scroll-container w-full rounded-md">
           {sortedDates
               .map((date) => {
                 let filteredExpenses = groupedExpenses[date];

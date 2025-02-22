@@ -29,3 +29,7 @@ export type ExpenseFormData = Omit<Expense, 'id' | 'date'> & {
   endDate?: string;
   country?: string;
 };
+
+export interface ExpenseListProps {
+  query?: string;
+}
