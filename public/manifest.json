@@ -1,6 +1,6 @@
 
 {
-  "name": "CocoBudget",
+  "name": "Expenses Tracker",
   "short_name": "Expenses Tracker",
   "description": "Track your travel expenses with ease",
   "start_url": "/",
