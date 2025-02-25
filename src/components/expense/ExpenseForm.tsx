@@ -127,19 +127,20 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!formData.amount) {
-      toast.error("Please enter an amount");
+      setTimeout(() => toast.error("Please enter an amount"), 0); // Delay toast execution
       return;
     }
 
     if (!date?.from) {
-      toast.error("Please select a date");
+      setTimeout(() => toast.error("Please select a date"), 0);
       return;
     }
 
-    formData.amount = +formData.amount.toFixed(2)
-    const currentTrip = localStorage.getItem('selectedTripId');
-    const tripsData = JSON.parse(localStorage.getItem('trips') || '[]');
+    formData.amount = +formData.amount.toFixed(2);
+    const currentTrip = localStorage.getItem("selectedTripId");
+    const tripsData = JSON.parse(localStorage.getItem("trips") || "[]");
     let formDataWithId = {};
     let updatedTrips = {};
 
@@ -152,7 +153,7 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
           return {
             ...trip,
             expenses: expenses.map((e: any, index: number) =>
-                index === existingIndex ? formData : e // Replace at the same index
+                index === existingIndex ? formData : e
             ),
           };
         }
@@ -161,10 +162,7 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
 
     } else {
       const id = Date.now().toString();
-      formDataWithId = {
-        ...formData,
-        id,
-      };
+      formDataWithId = { ...formData, id };
       updatedTrips = tripsData.map((trip: any) => {
         if (trip.id === currentTrip) {
           return {
@@ -176,13 +174,13 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
       });
     }
 
-    localStorage.setItem('trips', JSON.stringify(updatedTrips));
+    localStorage.setItem("trips", JSON.stringify(updatedTrips));
 
-    window.dispatchEvent(new Event('storageChange'));
+    window.dispatchEvent(new Event("storageChange"));
 
-    toast.success("Expense added successfully!");
+    setTimeout(() => toast.success("Expense added successfully!"), 100); // Delay toast execution
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...INITIAL_FORM_STATE,
       currency: prev.currency,
       country: prev.country,
@@ -190,10 +188,12 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
       latitude: prev.latitude,
       longitude: prev.longitude,
     }));
-    setStep('category');
+
+    setStep("category");
     setDate(undefined);
     onSuccess?.();
   };
+
 
   if (step === 'category') {
     return (
