@@ -17,6 +17,7 @@ import MapView from "@/components/maps/MapView";
 import { CountryExpensesChart } from "@/components/stats/CountryExpensesChart";
 import * as icons from "lucide-react";
 import { countries } from "@/data/countries.ts";
+import { TabbedExpensesChart } from "@/components/stats/TabbedExpensesChart";
 
 // Memoized components
 const MemoizedD3BarChart = memo(D3BarChart);
@@ -581,12 +582,12 @@ export function Dashboard() {
 
         <div className="grid gap-4 md:grid-cols-1">
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="p-1">
-              <h3 className="text-lg font-semibold mb-4 mx-3">Monthly Expenses</h3>
-              <MemoizedD3BarChart data={monthlyData} width={300} height={250}/>
-              <MemoizedYearlyExpensesBreakdown
-                  groupedByYear={groupedByYear}
+            <Card className="md:col-span-3">
+              <TabbedExpensesChart
+                  expenses={filteredExpenses}
                   currency={currentTripData?.currency ?? "EUR"}
+                  width={300}
+                  height={300}
               />
             </Card>
 

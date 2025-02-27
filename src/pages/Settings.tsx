@@ -9,7 +9,7 @@ import { DataManagement } from "@/components/settings/DataManagement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input"; // for searchable input
+import { Input } from "@/components/ui/input";
 import currencies from "@/data/currencies";
 import { currentCurrencySymbol } from "@/utils/helpers";
 
@@ -22,7 +22,6 @@ function Settings() {
   const [openFrom, setOpenFrom] = useState(false);
   const [fromCurrency, setFromCurrency] = useState<string>("EUR");
   const [searchFrom, setSearchFrom] = useState<string>("");
-  const [searchTo, setSearchTo] = useState<string>("");
 
   const [location, setLocation] = useState({
     latitude: null,
