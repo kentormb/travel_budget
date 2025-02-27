@@ -9,53 +9,11 @@ import Index from "./pages/Index";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { TripProvider } from "./contexts/TripContext";
-import { getUserLocation } from "@/utils/helpers";
-import { LocationData } from "@/types/location.ts";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
-    const gpsEnabled = localStorage.getItem("gpsEnabled");
-    const savedLocation = localStorage.getItem("userLocation");
-    const defaultLocationData = {
-      latitude: null,
-      longitude: null,
-      country: "",
-      city: "",
-      updated_at: new Date(),
-    };
-    if (gpsEnabled && gpsEnabled === "true") {
-      const lastUpdated = savedLocation
-          ? new Date(JSON.parse(savedLocation).updated_at)
-          : null;
-      const moreThanOneDayPassed = differenceInDays(new Date(), lastUpdated) > 1;
-
-      if (!savedLocation || moreThanOneDayPassed) {
-        getUserLocation()
-            .then((locationData: LocationData) => {
-              localStorage.setItem("userLocation", JSON.stringify(locationData));
-            })
-            .catch((error) => {
-              toast.error("Could not determine location");
-              if (!savedLocation) {
-                localStorage.setItem("userLocation", JSON.stringify({
-                  latitude: null,
-                  longitude: null,
-                  country: "",
-                  city: "",
-                  updated_at: new Date(),
-                }));
-              }
-            });
-      }
-    } else {
-      if (!savedLocation) {
-        localStorage.setItem("userLocation", JSON.stringify(defaultLocationData));
-      }
-      localStorage.setItem("gpsEnabled", "false");
-    }
-
     const savedCurrencyConversion = localStorage.getItem("currencyConversion");
     // If user allows currency conversion
     if (savedCurrencyConversion && JSON.parse(savedCurrencyConversion) === true) {
