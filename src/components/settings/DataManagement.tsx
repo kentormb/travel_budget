@@ -2,14 +2,8 @@
 import { Button } from "@/components/ui/button";
 import { Download, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { Trip } from "@/types/trip";
-import { format } from "date-fns";
 
-interface DataManagementProps {
-  trips: Trip[];
-}
-
-export function DataManagement({ trips }: DataManagementProps) {
+export function DataManagement() {
 
   const handleExportJSON = () => {
     const tripsData = localStorage.getItem("trips");
@@ -27,7 +21,14 @@ export function DataManagement({ trips }: DataManagementProps) {
     // 3. Create a temporary link element and trigger the download
     const link = document.createElement("a");
     link.href = fileUrl;
-    link.download = "trips_backup.json"; // Name of the file to be downloaded
+
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const formattedDate = `${year}${month}${day}`;
+
+    link.download = `trips_backup_${formattedDate}.json`;
     document.body.appendChild(link);
     link.click();
 
@@ -61,9 +62,14 @@ export function DataManagement({ trips }: DataManagementProps) {
         }
 
         if (existingTrips) {
-          jsonData.map(item => {
-            existingTrips.push(item)
+          jsonData.forEach(newTrip => {
+            const duplicate = existingTrips.find(trip => trip.id === newTrip.id);
+            if (duplicate) {
+              newTrip.id = `${newTrip.id}-${Math.random().toString(36).substring(2, 3)}`;
+            }
+            existingTrips.push(newTrip);
           });
+
           localStorage.setItem("trips", JSON.stringify(existingTrips));
         } else {
           localStorage.setItem("trips", JSON.stringify(jsonData));

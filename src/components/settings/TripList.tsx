@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,24 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Trip } from "@/types/trip";
-import currencies from "@/data/currencies"
+import currencies from "@/data/currencies";
 
-interface TripListProps {
-  trips: Trip[];
-  setTrips: React.Dispatch<React.SetStateAction<Trip[]>>;
-  selectedTripId: string | null;
-  setSelectedTripId: (id: string | null) => void;
-}
-
-export function TripList({
-                           trips,
-                           setTrips,
-                           selectedTripId,
-                           setSelectedTripId,
-                         }: TripListProps) {
+export function TripList() {
   const [editingTripId, setEditingTripId] = useState<string | null>(null);
   const [editedTrip, setEditedTrip] = useState<Partial<Trip>>({});
   const [editDate, setEditDate] = useState<DateRange | undefined>();
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
 
   const handleStartEditing = (trip: Trip) => {
     setEditingTripId(trip.id);
@@ -113,12 +103,35 @@ export function TripList({
     if (!confirmed) return;
 
     setTrips(trips.filter((trip) => trip.id !== tripId));
+    localStorage.setItem("trips", JSON.stringify(trips.filter((trip) => trip.id !== tripId)));
     if (selectedTripId === tripId) {
       localStorage.removeItem("selectedTripId");
       setSelectedTripId(null);
     }
     toast.success("Trip deleted successfully!");
   };
+
+  const handleStorageChange = () => {
+    const savedTrips = localStorage.getItem("trips");
+    const savedSelectedTripId = localStorage.getItem("selectedTripId");
+
+    if (savedTrips) {
+      setTrips(JSON.parse(savedTrips));
+    }
+
+    if (savedSelectedTripId) {
+      setSelectedTripId(savedSelectedTripId);
+    }
+  }
+
+  useEffect(() => {
+    window.addEventListener('storageChange', handleStorageChange);
+    handleStorageChange();
+
+    return () => {
+      window.removeEventListener('storageChange', handleStorageChange);
+    }
+  }, []);
 
   return (
       <div className="space-y-4">

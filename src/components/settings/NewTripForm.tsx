@@ -16,11 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trip } from "@/types/trip";
 import currencies from "@/data/currencies"
 
-interface NewTripFormProps {
-  setTrips: React.Dispatch<React.SetStateAction<Trip[]>>;
-}
-
-export function NewTripForm({ setTrips }: NewTripFormProps) {
+export function NewTripForm() {
   const [newTrip, setNewTrip] = useState<Partial<Trip>>({});
   const [date, setDate] = useState<DateRange | undefined>();
 
@@ -87,12 +83,11 @@ export function NewTripForm({ setTrips }: NewTripFormProps) {
       totalBudget: newTrip.totalBudget,
     };
 
-    console.log(trip)
-
-    setTrips(prevTrips => [...prevTrips, trip]);
+    localStorage.setItem('trips', JSON.stringify([...JSON.parse(localStorage.getItem('trips') || '[]'), trip]));
+    localStorage.setItem('selectedTripId', tripId);
     setNewTrip({});
     setDate(undefined);
-    localStorage.setItem('selectedTripId', tripId);
+    window.dispatchEvent(new Event('storageChange'));
     toast.success("Trip added successfully!");
   };
 

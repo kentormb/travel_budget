@@ -3,7 +3,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {ArrowLeft, Settings as SettingsIcon, Globe2 as Globe2Icon, ChevronDown, Search} from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Trip } from "@/types/trip";
 import { NewTripForm } from "@/components/settings/NewTripForm";
 import { TripList } from "@/components/settings/TripList";
 import { DataManagement } from "@/components/settings/DataManagement";
@@ -11,26 +10,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input"; // for searchable input
-import { toast } from "sonner";
 import currencies from "@/data/currencies";
-import { getUserLocation } from "@/utils/helpers";
-import { LocationData } from "@/types/location.ts";
+import { currentCurrencySymbol } from "@/utils/helpers";
 
 function Settings() {
   const navigate = useNavigate();
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
-  const [currentTrip, setCurrentTrip] = useState<Trip>(null);
-
   const [gpsEnabled, setGpsEnabled] = useState<boolean>(false);
   const [saveSelectedLocation, setSaveSelectedLocation] = useState<boolean>(false);
   const [updateLocationInNewExpenses, setUpdateLocationInNewExpenses] = useState<boolean>(false);
   const [currencyConversion, setCurrencyConversion] = useState<boolean>(false);
-
   const [openFrom, setOpenFrom] = useState(false);
   const [fromCurrency, setFromCurrency] = useState<string>("EUR");
-
-  // For filtering the currency list as user types
   const [searchFrom, setSearchFrom] = useState<string>("");
   const [searchTo, setSearchTo] = useState<string>("");
 
@@ -43,8 +33,6 @@ function Settings() {
   });
 
   useEffect(() => {
-    const savedTrips = localStorage.getItem("trips");
-    const savedSelectedTripId = localStorage.getItem("selectedTripId");
     const savedGpsSetting = localStorage.getItem("gpsEnabled");
     const saveSaveSelectedLocation = localStorage.getItem("saveSelectedLocation");
     const savedCurrencyConversion = localStorage.getItem("currencyConversion");
@@ -52,15 +40,6 @@ function Settings() {
     const savedFromCurrency = localStorage.getItem("fromCurrency");
     const updateLocation = localStorage.getItem("updateLocation");
 
-    if (savedSelectedTripId) {
-      setSelectedTripId(savedSelectedTripId);
-    }
-    if (savedTrips) {
-      setTrips(JSON.parse(savedTrips));
-    }
-    if (savedTrips && savedSelectedTripId) {
-      setCurrentTrip(JSON.parse(savedTrips).find((t: any) => t.id === savedSelectedTripId));
-    }
     if (savedGpsSetting) {
       setGpsEnabled(JSON.parse(savedGpsSetting));
     }
@@ -81,16 +60,6 @@ function Settings() {
     }
 
   }, []);
-
-  useEffect(() => {
-    localStorage.setItem("trips", JSON.stringify(trips));
-    window.dispatchEvent(new Event('storageChange'));
-    const savedTrips = localStorage.getItem("trips");
-    const savedSelectedTripId = localStorage.getItem("selectedTripId");
-    if (savedTrips && savedSelectedTripId) {
-      setCurrentTrip(JSON.parse(savedTrips).find((t: any) => t.id === savedSelectedTripId));
-    }
-  }, [trips]);
 
   const handleSaveSelectedLocation = (saveSelectedLocation: boolean) => {
     setSaveSelectedLocation(saveSelectedLocation);
@@ -128,7 +97,7 @@ function Settings() {
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Button>
-          <DataManagement trips={trips} />
+          <DataManagement />
         </div>
 
         <Tabs defaultValue="trips" className="space-y-1">
@@ -143,16 +112,10 @@ function Settings() {
 
           <TabsContent value="trips">
             <div className="space-y-6">
-              <NewTripForm setTrips={setTrips} />
-
+              <NewTripForm/>
               <Card>
                 <h3 className="text-lg font-semibold mb-4 p-2">Your Trips</h3>
-                <TripList
-                    trips={trips}
-                    setTrips={setTrips}
-                    selectedTripId={selectedTripId}
-                    setSelectedTripId={setSelectedTripId}
-                />
+                <TripList />
               </Card>
             </div>
           </TabsContent>
@@ -242,7 +205,7 @@ function Settings() {
                     {/* TO CURRENCY Popover */}
                     <div className="w-full sm:w-1/2">
                       <label className="block text-sm font-medium mb-1">To
-                        Currency: {currentTrip?.currency || "EUR"}</label>
+                        Currency: {currentCurrencySymbol()}</label>
                     </div>
                   </div>
               )}

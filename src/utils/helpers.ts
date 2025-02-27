@@ -32,6 +32,10 @@ export function currentCurrency () {
     return currentTrip?.currency || 'EUR';
 }
 
+export function currentCurrencySymbol () {
+    return getCurrencySymbol(currentCurrency());
+}
+
 export function splitExpenses (expenses: any) {
     const seperatedExpenses = [];
     expenses.forEach(expense => {
