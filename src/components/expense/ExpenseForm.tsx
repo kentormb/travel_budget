@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { ExpenseFormData } from "@/types/expense";
 import { toast } from "sonner";
 import { ExpenseDetails } from "../expense/ExpenseDetails";
@@ -30,15 +30,29 @@ const INITIAL_FORM_STATE: ExpenseFormData = {
   excludeFromAvg: false,
 };
 
+function toLocalDateString(date: Date): string {
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  const localMidnight = new Date(date.getTime() - offsetMs);
+  return localMidnight.toISOString().split('T')[0];
+}
+
+const MemoizedExpenseCategoryStep = memo(ExpenseCategoryStep);
+
 export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
   const { currentTripData } = useTrip();
-  const [formData, setFormData] = useState<ExpenseFormData>(() => {
+
+  const initialFormState = useMemo(() => {
     const savedLocation = JSON.parse(localStorage.getItem('userLocation') || '{}');
-    return expense ? {
-      ...expense,
-      date: expense.date,
-      endDate: expense.endDate || expense.date
-    } : {
+
+    if (expense) {
+      return {
+        ...expense,
+        date: expense.date,
+        endDate: expense.endDate || expense.date
+      };
+    }
+
+    return {
       ...INITIAL_FORM_STATE,
       currency: currentTripData?.currency || 'EUR',
       country: savedLocation.country || '',
@@ -46,48 +60,42 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
       latitude: savedLocation.latitude || null,
       longitude: savedLocation.longitude || null,
     };
+  }, [expense, currentTripData?.currency]);
+
+  const [formData, setFormData] = useState<ExpenseFormData>(initialFormState);
+  const [step, setStep] = useState<'category' | 'details'>(expense ? 'details' : 'category');
+
+  const [categories, setCategories] = useState<Categories>(() => {
+    try {
+      const currentTripId = localStorage.getItem('selectedTripId');
+      const tripsData = JSON.parse(localStorage.getItem('trips') || '[]');
+      const currentTrip = tripsData.find((t: any) => t.id === currentTripId);
+      return currentTrip?.categories || defaultCategories;
+    } catch (e) {
+      return defaultCategories;
+    }
   });
 
-  const [step, setStep] = useState<'category' | 'details'>(expense ? 'details' : 'category');
-  const [date, setDate] = useState<DateRange | undefined>(() => {
+  const initialDateRange = useMemo(() => {
     if (expense) {
-      const to = expense.date === expense.endDate ? undefined : (expense.endDate ? new Date(expense.endDate) : new Date(expense.date));
+      const to = expense.date === expense.endDate
+          ? undefined
+          : (expense.endDate ? new Date(expense.endDate) : new Date(expense.date));
       return {
         from: new Date(expense.date),
-        to: to
+        to
       };
     }
-    const today = new Date();
+
     return {
-      from: today,
+      from: new Date(),
       to: undefined
     };
-  });
+  }, [expense]);
 
-  const [categories, setCategories] = useState<Categories>(defaultCategories);
+  const [date, setDate] = useState<DateRange | undefined>(initialDateRange);
 
-  useEffect(() => {
-    if (currentTripData?.currency) {
-      setFormData(prev => ({
-        ...prev,
-        currency: currentTripData.currency
-      }));
-    }
-  }, [currentTripData?.currency]);
-
-  useEffect(() => {
-    const currentTripId = localStorage.getItem('selectedTripId');
-    const tripsData = JSON.parse(localStorage.getItem('trips') || '[]');
-    const currentTrip = tripsData.find((t: any) => t.id === currentTripId);
-
-    if (currentTrip?.categories) {
-      setCategories(currentTrip.categories);
-    } else {
-      setCategories(defaultCategories);
-    }
-  }, []);
-
-  const handleUpdateCategories = (newCategories: Categories) => {
+  const handleUpdateCategories = useCallback((newCategories: Categories) => {
     const currentTripId = localStorage.getItem('selectedTripId');
     const tripsData = JSON.parse(localStorage.getItem('trips') || '[]');
 
@@ -103,29 +111,20 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
 
     localStorage.setItem('trips', JSON.stringify(updatedTrips));
     setCategories(newCategories);
-  };
+  }, []);
 
-  function toLocalDateString(date: Date) {
-    // Adjust by the user's timezone offset (in minutes)
-    const offsetMs = date.getTimezoneOffset() * 60_000;
-    // Create a new Date shifted so that it "becomes" local midnight
-    const localMidnight = new Date(date.getTime() - offsetMs);
-    // Now take the YYYY-MM-DD part
-    return localMidnight.toISOString().split('T')[0];
-  }
+  const handleCategorySelect = useCallback((categoryId: string) => {
+    setFormData(prev => ({ ...prev, categoryId }));
+    setStep('details');
+  }, []);
 
-  useEffect(() => {
-    if (date?.from) {
-      // @ts-ignore
-      setFormData(prev => ({
-        ...prev,
-        date: date.from ? toLocalDateString(date.from) : prev.date,
-        endDate: date.to ? toLocalDateString(date.to) : toLocalDateString(date.from!),
-      }));
-    }
-  }, [date]);
+  const handleFormDataChange = useCallback((changes: Partial<ExpenseFormData>) => {
+    setFormData(prev => ({ ...prev, ...changes }));
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const isEdit = useMemo(() => !!expense, [expense]);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.amount) {
@@ -138,36 +137,34 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
       return;
     }
 
-    formData.amount = +formData.amount.toFixed(2);
-    const currentTrip = localStorage.getItem("selectedTripId");
+    const formattedAmount = +formData.amount.toFixed(2);
+    const submitData = { ...formData, amount: formattedAmount };
+
+    const currentTripId = localStorage.getItem("selectedTripId");
     const tripsData = JSON.parse(localStorage.getItem("trips") || "[]");
-    let formDataWithId = {};
-    let updatedTrips = {};
+    let updatedTrips;
 
     if (expense?.id) {
-      const expenses = tripsData.find((t: any) => t.id === currentTrip).expenses;
-      const existingIndex = expenses.findIndex((e: any) => e.id === expense.id);
-
+      // Edit existing expense
       updatedTrips = tripsData.map((trip: any) => {
-        if (trip.id === currentTrip) {
+        if (trip.id === currentTripId) {
           return {
             ...trip,
-            expenses: expenses.map((e: any, index: number) =>
-                index === existingIndex ? formData : e
+            expenses: trip.expenses.map((e: any) =>
+                e.id === expense.id ? submitData : e
             ),
           };
         }
         return trip;
       });
-
     } else {
-      const id = Date.now().toString();
-      formDataWithId = { ...formData, id };
+      // Add new expense
+      const newExpense = { ...submitData, id: Date.now().toString() };
       updatedTrips = tripsData.map((trip: any) => {
-        if (trip.id === currentTrip) {
+        if (trip.id === currentTripId) {
           return {
             ...trip,
-            expenses: [formDataWithId, ...trip.expenses],
+            expenses: [newExpense, ...trip.expenses],
           };
         }
         return trip;
@@ -175,53 +172,82 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
     }
 
     localStorage.setItem("trips", JSON.stringify(updatedTrips));
-
     window.dispatchEvent(new Event("storageChange"));
+    toast.success("Expense saved successfully!");
 
-    setTimeout(() => toast.success("Expense added successfully!"), 100); // Delay toast execution
-
-    setFormData((prev) => ({
+    setFormData({
       ...INITIAL_FORM_STATE,
-      currency: prev.currency,
-      country: prev.country,
-      location: prev.location,
-      latitude: prev.latitude,
-      longitude: prev.longitude,
-    }));
-
+      currency: formData.currency,
+      country: formData.country,
+      location: formData.location,
+      latitude: formData.latitude,
+      longitude: formData.longitude,
+    });
     setStep("category");
     setDate(undefined);
     onSuccess?.();
-  };
+  }, [formData, date, expense, onSuccess]);
 
+  useEffect(() => {
+    if (currentTripData?.currency) {
+      setFormData(prev => {
+        // Only update if different to prevent unnecessary re-renders
+        if (prev.currency !== currentTripData.currency) {
+          return {
+            ...prev,
+            currency: currentTripData.currency
+          };
+        }
+        return prev;
+      });
+    }
+  }, [currentTripData?.currency]);
+
+  useEffect(() => {
+    if (date?.from) {
+      setFormData(prev => {
+        const newDate = toLocalDateString(date.from);
+        const newEndDate = date.to ? toLocalDateString(date.to) : newDate;
+
+        // Only update if different to prevent unnecessary re-renders
+        if (prev.date !== newDate || prev.endDate !== newEndDate) {
+          return {
+            ...prev,
+            date: newDate,
+            endDate: newEndDate,
+          };
+        }
+        return prev;
+      });
+    }
+  }, [date]);
+
+  const categoryStepProps = useMemo(() => ({
+    selectedCategory: formData.categoryId,
+    onSelectCategory: handleCategorySelect,
+    categories,
+    onUpdateCategories: handleUpdateCategories,
+    isEdit
+  }), [formData.categoryId, handleCategorySelect, categories, handleUpdateCategories, isEdit]);
+
+  const detailsProps = useMemo(() => ({
+    formData,
+    onFormDataChange: handleFormDataChange,
+    date,
+    onDateChange: setDate,
+    isEdit,
+    onBack: () => setStep('category'),
+    onSubmit: handleSubmit
+  }), [formData, handleFormDataChange, date, setDate, isEdit, handleSubmit]);
 
   if (step === 'category') {
-    return (
-        <ExpenseCategoryStep
-            selectedCategory={formData.categoryId}
-            onSelectCategory={(categoryId) => {
-              setFormData(prev => ({ ...prev, categoryId }));
-              setStep('details');
-            }}
-            categories={categories}
-            onUpdateCategories={handleUpdateCategories}
-            isEdit={!!expense}
-        />
-    );
+    return <MemoizedExpenseCategoryStep {...categoryStepProps} />;
   }
 
   return (
       <>
         <DialogTitle>{expense ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
-        <ExpenseDetails
-            formData={formData}
-            onFormDataChange={(changes) => setFormData(prev => ({ ...prev, ...changes }))}
-            date={date}
-            onDateChange={setDate}
-            isEdit={!!expense}
-            onBack={() => setStep('category')}
-            onSubmit={handleSubmit}
-        />
+        <ExpenseDetails {...detailsProps} />
       </>
   );
 }
