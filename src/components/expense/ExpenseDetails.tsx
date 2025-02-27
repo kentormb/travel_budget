@@ -8,11 +8,13 @@ import { ExpenseFormData } from "@/types/expense";
 import { ExpenseNameInput } from "./ExpenseNameInput";
 import { ExpenseDateRangePicker } from "./ExpenseDateRangePicker";
 import { ExpenseAmountInput } from "./ExpenseAmountInput";
-import { MapPin } from "lucide-react";
-import { getCoordinates } from "@/utils/helpers";
+import { Search } from "lucide-react";
+import {getCoordinates, getUserLocation} from "@/utils/helpers";
 import { Checkbox } from "@/components/ui/checkbox";
 import { countries } from "@/data/countries";
 import { toast } from "sonner";
+import { useEffect } from "react";
+import {LocationData} from "@/types/location.ts";
 
 interface ExpenseDetailsProps {
     formData: ExpenseFormData;
@@ -34,6 +36,27 @@ export function ExpenseDetails({
                                    isEdit,
                                }: ExpenseDetailsProps) {
 
+    useEffect(() => {
+        const gpsEnabled = localStorage.getItem("gpsEnabled");
+        const updateLocation = localStorage.getItem("updateLocation");
+        if (gpsEnabled && JSON.parse(gpsEnabled) && updateLocation && JSON.parse(updateLocation)) {
+            getUserLocation()
+                .then((locationData: LocationData) => {
+                    formData.country = locationData.country;
+                    formData.location = locationData.city;
+                    formData.latitude = locationData.latitude;
+                    formData.longitude = locationData.longitude;
+                    const saveSelectedLocation = localStorage.getItem("saveSelectedLocation");
+                    if (saveSelectedLocation && JSON.parse(saveSelectedLocation)) {
+                        localStorage.setItem("userLocation", JSON.stringify(locationData));
+                    }
+                })
+                .catch((error) => {
+                    toast.error("Location access denied");
+                });
+        }
+    }, []);
+
     const getCoords = () => {
         toast.info("Trying to get coordinates");
         const country: any = countries.find(item => item.code.toLowerCase() === formData.country.toLowerCase());
@@ -48,7 +71,7 @@ export function ExpenseDetails({
                 }
                 const saveSelectedLocation = localStorage.getItem('saveSelectedLocation');
                 if (JSON.parse(saveSelectedLocation)) {
-                   localStorage.setItem('userLocation', JSON.stringify(locationData));
+                    localStorage.setItem('userLocation', JSON.stringify(locationData));
                 }
                 formData.latitude = res.latitude;
                 formData.longitude = res.longitude;
@@ -108,7 +131,7 @@ export function ExpenseDetails({
                             onChange={(e) => onLocationChange(e.target.value)}
                             placeholder="Enter city or place"
                         />
-                        <MapPin className="!h-5 !w-5" onClick={getCoords} />
+                        <Search className="!h-5 !w-5" onClick={getCoords} />
                     </div>
                 </div>
 

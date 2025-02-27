@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings as SettingsIcon, Globe2 as Globe2Icon, ChevronDown } from "lucide-react";
+import {ArrowLeft, Settings as SettingsIcon, Globe2 as Globe2Icon, ChevronDown, Search} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Trip } from "@/types/trip";
 import { NewTripForm } from "@/components/settings/NewTripForm";
@@ -24,11 +24,11 @@ function Settings() {
 
   const [gpsEnabled, setGpsEnabled] = useState<boolean>(false);
   const [saveSelectedLocation, setSaveSelectedLocation] = useState<boolean>(false);
+  const [updateLocationInNewExpenses, setUpdateLocationInNewExpenses] = useState<boolean>(false);
   const [currencyConversion, setCurrencyConversion] = useState<boolean>(false);
 
   const [openFrom, setOpenFrom] = useState(false);
-  const [openTo, setOpenTo] = useState(false);
-  const [fromCurrency, setFromCurrency] = useState<string>("USD");
+  const [fromCurrency, setFromCurrency] = useState<string>("EUR");
 
   // For filtering the currency list as user types
   const [searchFrom, setSearchFrom] = useState<string>("");
@@ -50,6 +50,7 @@ function Settings() {
     const savedCurrencyConversion = localStorage.getItem("currencyConversion");
     const savedLocation = localStorage.getItem("userLocation");
     const savedFromCurrency = localStorage.getItem("fromCurrency");
+    const updateLocation = localStorage.getItem("updateLocation");
 
     if (savedSelectedTripId) {
       setSelectedTripId(savedSelectedTripId);
@@ -61,6 +62,7 @@ function Settings() {
       setCurrentTrip(JSON.parse(savedTrips).find((t: any) => t.id === savedSelectedTripId));
     }
     if (savedGpsSetting) {
+      console.log(savedGpsSetting)
       setGpsEnabled(JSON.parse(savedGpsSetting));
     }
     if (saveSaveSelectedLocation) {
@@ -72,9 +74,11 @@ function Settings() {
     if (savedLocation) {
       setLocation(JSON.parse(savedLocation));
     }
-
     if (savedFromCurrency) {
       setFromCurrency(savedFromCurrency);
+    }
+    if (updateLocation) {
+      setUpdateLocationInNewExpenses(JSON.parse(updateLocation));
     }
 
   }, []);
@@ -89,41 +93,33 @@ function Settings() {
     }
   }, [trips]);
 
-  useEffect(() => {
-    localStorage.setItem("gpsEnabled", JSON.stringify(gpsEnabled));
-    if (gpsEnabled) {
-      getUserLocation()
-          .then((locationData: LocationData) => {
-            setLocation(locationData);
-            localStorage.setItem("userLocation", JSON.stringify(locationData));
-            toast.success("Location updated!");
-          })
-          .catch((error) => {
-            toast.error("Location access denied");
-          });
-    }
-  }, [gpsEnabled]);
-
-  useEffect(() => {
+  const handleSaveSelectedLocation = (saveSelectedLocation: boolean) => {
+    setSaveSelectedLocation(saveSelectedLocation);
     localStorage.setItem("saveSelectedLocation", JSON.stringify(saveSelectedLocation));
-  }, [saveSelectedLocation]);
+  }
 
-  useEffect(() => {
+  const handleCurrencyConversion = (currencyConversion: boolean) => {
+    setCurrencyConversion(currencyConversion);
     localStorage.setItem("currencyConversion", JSON.stringify(currencyConversion));
-  }, [currencyConversion]);
+  }
 
-  // If we want to also persist fromCurrency/toCurrency
-  // whenever user changes them, update localStorage:
-  useEffect(() => {
+  const handleFromCurrency = (fromCurrency: string) => {
+    setFromCurrency(fromCurrency);
     localStorage.setItem("fromCurrency", fromCurrency);
-  }, [fromCurrency]);
+  }
 
-  // Filter function for the currency arrays
+  const handleUpdateLocationInNewExpenses = (updateLocationInNewExpenses: boolean) => {
+    setUpdateLocationInNewExpenses(updateLocationInNewExpenses);
+    localStorage.setItem("updateLocation", JSON.stringify(updateLocationInNewExpenses));
+  }
+
+  const handleGpsEnabled = (gpsEnabled: boolean) => {
+    setGpsEnabled(gpsEnabled);
+    localStorage.setItem("gpsEnabled", JSON.stringify(gpsEnabled));
+  }
+
   const filteredFromCurrencies = currencies.filter((c) =>
       c.toLowerCase().includes(searchFrom.toLowerCase())
-  );
-  const filteredToCurrencies = currencies.filter((c) =>
-      c.toLowerCase().includes(searchTo.toLowerCase())
   );
 
   return (
@@ -167,7 +163,7 @@ function Settings() {
               {/* GPS Switch */}
               <div className="flex items-center justify-between mb-4 font-bold">
                 <span>Enable GPS tracking</span>
-                <Switch checked={gpsEnabled} onCheckedChange={setGpsEnabled}/>
+                <Switch checked={gpsEnabled} onCheckedChange={handleGpsEnabled}/>
               </div>
               {gpsEnabled && location.city && (
                   <p className="mt-2 text-sm text-gray-600">
@@ -175,22 +171,28 @@ function Settings() {
                   </p>
               )}
 
-              {/* GPS Switch */}
+              {/* Save location Switch */}
               <div className="flex items-center justify-between mt-4 mb-4 font-bold">
-                <span>Save last selected location</span>
-                <Switch checked={saveSelectedLocation} onCheckedChange={setSaveSelectedLocation}/>
+                <span>Save last location</span>
+                <Switch checked={saveSelectedLocation} onCheckedChange={handleSaveSelectedLocation}/>
               </div>
               <p className="mt-2 text-sm text-gray-600">
-                If the PIN button next to Location is pressed and this option is selected, it will try to find the
-                coordinates of Location and Country and save it
+                iF you enable this, your last selected location will be saved. Ether on new expense or by searching for
+                a location in new expense
               </p>
+
+              {/* Update Location Switch */}
+              <div className="flex items-center justify-between mt-4 mb-4 font-bold">
+                <span>Update location every time a new expense is created</span>
+                <Switch checked={updateLocationInNewExpenses} onCheckedChange={handleUpdateLocationInNewExpenses}/>
+              </div>
 
               {/* Currency Conversion Switch */}
               <div className="mt-6 flex items-center justify-between font-bold">
                 <span>Allow price conversions</span>
                 <Switch
                     checked={currencyConversion}
-                    onCheckedChange={setCurrencyConversion}
+                    onCheckedChange={handleCurrencyConversion}
                 />
               </div>
 
@@ -221,7 +223,7 @@ function Settings() {
                                 <div
                                     key={c}
                                     onClick={() => {
-                                      setFromCurrency(c);
+                                      handleFromCurrency(c);
                                       setOpenFrom(false);
                                     }}
                                     className="cursor-pointer p-2 hover:bg-gray-100 rounded"
