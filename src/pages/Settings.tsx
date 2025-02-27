@@ -160,7 +160,7 @@ function Settings() {
           <TabsContent value="settings">
             <Card className="p-4">
               {/* GPS Switch */}
-              <div className="flex items-center justify-between mb-4 font-bold">
+              <div className="flex items-center justify-between mb-6 font-bold">
                 <span>Enable GPS tracking</span>
                 <Switch checked={gpsEnabled} onCheckedChange={handleGpsEnabled}/>
               </div>
@@ -170,21 +170,25 @@ function Settings() {
                   </p>
               )}
 
+              {/* Update Location Switch */}
+              {gpsEnabled && (
+                  <div className="flex items-center justify-between mt-6 mb-4 font-bold">
+                    <span>Update location every time a new expense is created</span>
+                    <Switch checked={updateLocationInNewExpenses} onCheckedChange={handleUpdateLocationInNewExpenses}/>
+                  </div>
+              )}
+
               {/* Save location Switch */}
-              <div className="flex items-center justify-between mt-4 mb-4 font-bold">
+              <div className="flex items-center justify-between mt-6 mb-4 font-bold">
                 <span>Save last location</span>
                 <Switch checked={saveSelectedLocation} onCheckedChange={handleSaveSelectedLocation}/>
               </div>
+              {saveSelectedLocation && (
               <p className="mt-2 text-sm text-gray-600">
-                iF you enable this, your last selected location will be saved. Ether on new expense or by searching for
+                If you enable this, your last selected location will be saved. Ether on new expense or by searching for
                 a location in new expense
               </p>
-
-              {/* Update Location Switch */}
-              <div className="flex items-center justify-between mt-4 mb-4 font-bold">
-                <span>Update location every time a new expense is created</span>
-                <Switch checked={updateLocationInNewExpenses} onCheckedChange={handleUpdateLocationInNewExpenses}/>
-              </div>
+              )}
 
               {/* Currency Conversion Switch */}
               <div className="mt-6 flex items-center justify-between font-bold">
