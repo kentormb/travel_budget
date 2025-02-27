@@ -62,7 +62,6 @@ function Settings() {
       setCurrentTrip(JSON.parse(savedTrips).find((t: any) => t.id === savedSelectedTripId));
     }
     if (savedGpsSetting) {
-      console.log(savedGpsSetting)
       setGpsEnabled(JSON.parse(savedGpsSetting));
     }
     if (saveSaveSelectedLocation) {
