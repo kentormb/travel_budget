@@ -21,7 +21,6 @@ export function ExpenseCategoryStep({
 }: ExpenseCategoryStepProps) {
   return (
     <div className="space-y-6">
-      <DialogTitle>{isEdit ? 'Edit Expense' : 'Add New Expense'}</DialogTitle>
       <div className="max-h-[80vh] overflow-y-auto px-2">
         <CategorySelector
           selectedCategory={selectedCategory}

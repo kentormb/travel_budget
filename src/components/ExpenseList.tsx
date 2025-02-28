@@ -173,7 +173,7 @@ export function ExpenseList({ query }: ExpenseListProps) {
         </ScrollArea>
 
         <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
-          <DialogContent className="max-w-md max-h-screen h-full sm:h-auto overflow-y-auto">
+          <DialogContent className="max-w-md max-h-screen h-full sm:h-auto overflow-y-auto" aria-describedby="">
             <ExpenseForm
                 expense={editingExpense}
                 onSuccess={() => {

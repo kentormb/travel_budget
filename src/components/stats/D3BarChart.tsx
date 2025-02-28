@@ -54,5 +54,5 @@ export function D3BarChart({ data, width = 300, height = 250 }) {
             .attr("fill", "#FFA500"); // Orange color
     }, [data]);
 
-    return <svg ref={svgRef} />;
+    return <svg ref={svgRef} />
 }

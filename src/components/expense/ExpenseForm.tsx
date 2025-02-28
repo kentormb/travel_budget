@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ExpenseFormData } from "@/types/expense";
 import { toast } from "sonner";
 import { ExpenseDetails } from "../expense/ExpenseDetails";
@@ -35,8 +35,6 @@ function toLocalDateString(date: Date): string {
   const localMidnight = new Date(date.getTime() - offsetMs);
   return localMidnight.toISOString().split('T')[0];
 }
-
-const MemoizedExpenseCategoryStep = memo(ExpenseCategoryStep);
 
 export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
   const { currentTripData } = useTrip();
@@ -241,7 +239,12 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
   }), [formData, handleFormDataChange, date, setDate, isEdit, handleSubmit]);
 
   if (step === 'category') {
-    return <MemoizedExpenseCategoryStep {...categoryStepProps} />;
+    return (
+        <>
+          <DialogTitle></DialogTitle>
+          <ExpenseCategoryStep {...categoryStepProps} />
+        </>
+    );
   }
 
   return (

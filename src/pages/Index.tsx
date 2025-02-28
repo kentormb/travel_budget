@@ -150,7 +150,7 @@ const Index = () => {
   }, [trips, selectedTripId, handleSetSelectedTrip]);
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <LoadingSpinner />
   }
 
   if (!selectedTripId) {
@@ -245,7 +245,7 @@ const Index = () => {
         )}
 
         <Dialog open={showAddExpense} onOpenChange={handleToggleAddExpense}>
-          <DialogContent className="max-w-md" aria-describedby="">
+          <DialogContent className="max-w-md max-h-screen h-full sm:h-auto overflow-y-auto" aria-describedby="">
             <ExpenseForm onSuccess={handleExpenseSuccess}/>
           </DialogContent>
         </Dialog>

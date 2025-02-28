@@ -68,18 +68,17 @@ export function CategoryManagement({
   return (
       <Dialog>
         <DialogTrigger asChild>
-          <Button variant="outline" className="w-full md:w-auto text-sm">
+          <Button variant="outline" className="w-full md:w-auto text-sm mt-4">
             <Plus className="mr-2 h-4 w-4" />
             Manage Categories
           </Button>
         </DialogTrigger>
-        <DialogContent className="h-[95vh] md:h-[90vh] md:max-h-[600px] overflow-hidden flex flex-col">
+        <DialogContent className="h-[95vh] md:h-[90vh] md:max-h-[600px] overflow-hidden flex flex-col" aria-describedby="">
           <DialogHeader>
             <DialogTitle>Category Management</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-4 px-2">
             <CategoryForm
-                // If we have an editingCategory, the form is in edit mode
                 initialCategory={editingCategory}
                 onAddCategory={handleAddCategory}
                 onUpdateCategory={handleUpdateCategory}

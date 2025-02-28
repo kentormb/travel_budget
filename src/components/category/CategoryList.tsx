@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Trash2 } from "lucide-react";
 import { IconComponent } from "./IconComponent";
 import { Category } from "@/types/category";
+import { useState } from "react";
 
 interface CategoryListProps {
     categories: { [key: string]: Category };
@@ -15,16 +16,19 @@ export function CategoryList({
                                  onEditCategory,
                                  onDeleteCategory,
                              }: CategoryListProps) {
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     return (
         <div className="space-y-2">
             <Label>Existing Categories</Label>
-            <div className="grid gap-2">
+            <div className="grid gap-2 py-2">
                 {Object.values(categories).map((category) => (
                     <div
                         key={category.id}
-                        className="flex items-center justify-between p-2 border rounded-md cursor-pointer"
-                        // Clicking on the row will set the form to edit mode
-                        onClick={() => onEditCategory(category)}
+                        className={`flex items-center justify-between p-2 border rounded-md cursor-pointer ${category.id === selectedCategory ? 'ring-2 ring-green-600' : ''}`}
+                        onClick={() => {
+                            setSelectedCategory(category.id);
+                            onEditCategory(category)}
+                        }
                     >
                         <div className="flex items-center gap-2">
                             <div
