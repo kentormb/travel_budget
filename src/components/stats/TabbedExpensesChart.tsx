@@ -23,7 +23,6 @@ export function TabbedExpensesChart({
                                     }: TabbedExpensesChartProps) {
     const [activeTab, setActiveTab] = useState("monthly");
 
-    // Process data for each time period
     const {
         annualData,
         monthlyData,
@@ -126,6 +125,16 @@ export function TabbedExpensesChart({
             return dateA.getTime() - dateB.getTime();
         });
 
+        if (dailyData.length < 8) {
+            setActiveTab("daily");
+        } else if (weeklyData.length < 5) {
+            setActiveTab("weekly");
+        } else if (monthlyData.length < 13) {
+            setActiveTab("monthly");
+        } else {
+            setActiveTab("annual");
+        }
+
         return {
             annualData,
             monthlyData,
@@ -136,7 +145,7 @@ export function TabbedExpensesChart({
 
     return (
         <Card>
-            <Tabs defaultValue="monthly" value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <div className="p-4 border-b">
                     <h3 className="text-lg font-semibold mb-4">Expenses Breakdown</h3>
                     <TabsList className="grid grid-cols-4 w-full">

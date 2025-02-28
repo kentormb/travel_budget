@@ -1,7 +1,7 @@
 {
   "name": "coco_budget",
   "private": true,
-  "version": "1.1.4",
+  "version": "1.1.6",
   "type": "module",
   "scripts": {
     "dev": "vite",

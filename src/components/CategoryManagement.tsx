@@ -73,7 +73,7 @@ export function CategoryManagement({
             Manage Categories
           </Button>
         </DialogTrigger>
-        <DialogContent className="h-[95vh] md:h-[90vh] md:max-h-[600px] overflow-hidden flex flex-col" aria-describedby="">
+        <DialogContent className="max-w-md max-h-screen h-full sm:h-auto overflow-y-auto flex flex-col" aria-describedby="">
           <DialogHeader>
             <DialogTitle>Category Management</DialogTitle>
           </DialogHeader>
