@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import currencies from "@/data/currencies";
-import { currentCurrencySymbol } from "@/utils/helpers";
+import { currentCurrency } from "@/utils/helpers";
 
 function Settings() {
   const navigate = useNavigate();
@@ -19,6 +19,8 @@ function Settings() {
   const [saveSelectedLocation, setSaveSelectedLocation] = useState<boolean>(false);
   const [updateLocationInNewExpenses, setUpdateLocationInNewExpenses] = useState<boolean>(false);
   const [currencyConversion, setCurrencyConversion] = useState<boolean>(false);
+  const [customCurrencyConversion, setCustomCurrencyConversion] = useState<boolean>(false);
+  const [customConversionPrice, setCustomConversionPrice] = useState<number>(1);
   const [openFrom, setOpenFrom] = useState(false);
   const [fromCurrency, setFromCurrency] = useState<string>("EUR");
   const [searchFrom, setSearchFrom] = useState<string>("");
@@ -38,6 +40,8 @@ function Settings() {
     const savedLocation = localStorage.getItem("userLocation");
     const savedFromCurrency = localStorage.getItem("fromCurrency");
     const updateLocation = localStorage.getItem("updateLocation");
+    const customCurrencyConversion = localStorage.getItem("customCurrencyConversion");
+    const customCurrencyConversionPrice = localStorage.getItem("customCurrencyConversionPrice");
 
     if (savedGpsSetting) {
       setGpsEnabled(JSON.parse(savedGpsSetting));
@@ -57,6 +61,12 @@ function Settings() {
     if (updateLocation) {
       setUpdateLocationInNewExpenses(JSON.parse(updateLocation));
     }
+    if (customCurrencyConversion) {
+      setCustomCurrencyConversion(JSON.parse(customCurrencyConversion));
+    }
+    if (customCurrencyConversionPrice) {
+      setCustomConversionPrice(JSON.parse(customCurrencyConversionPrice));
+    }
 
   }, []);
 
@@ -68,6 +78,16 @@ function Settings() {
   const handleCurrencyConversion = (currencyConversion: boolean) => {
     setCurrencyConversion(currencyConversion);
     localStorage.setItem("currencyConversion", JSON.stringify(currencyConversion));
+  }
+
+  const handleCustomCurrencyConversion = (customCurrencyConversion: boolean) => {
+    setCustomCurrencyConversion(customCurrencyConversion);
+    localStorage.setItem("customCurrencyConversion", JSON.stringify(customCurrencyConversion));
+  }
+
+  const handleCustomCurrencyConversionPrice = (price: number) => {
+    setCustomConversionPrice(price);
+    localStorage.setItem("customCurrencyConversionPrice", JSON.stringify(price));
   }
 
   const handleFromCurrency = (fromCurrency: string) => {
@@ -163,50 +183,70 @@ function Settings() {
 
               {/* If currencyConversion is ON, show 2 Popovers in a row */}
               {currencyConversion && (
-                  <div className="mt-4 flex flex-col sm:flex-row gap-4">
-                    {/* FROM CURRENCY Popover */}
-                    <div className="w-full sm:w-1/2">
-                      <label className="block text-sm font-medium mb-1">From Currency</label>
-                      <Popover open={openFrom} onOpenChange={setOpenFrom}>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline"
-                                  className="w-full justify-between"
-                                  onClick={() => setOpenFrom((prev) => !prev)}
-                          >
-                            {fromCurrency} <ChevronDown className="ml-2 h-4 w-4"/>
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-72 p-2">
-                          <Input
-                              placeholder="Search currency..."
-                              value={searchFrom}
-                              onChange={(e) => setSearchFrom(e.target.value)}
-                              className="mb-2"
-                          />
-                          <div className="max-h-48 overflow-auto">
-                            {filteredFromCurrencies.map((c) => (
-                                <div
-                                    key={c}
-                                    onClick={() => {
-                                      handleFromCurrency(c);
-                                      setOpenFrom(false);
-                                    }}
-                                    className="cursor-pointer p-2 hover:bg-gray-100 rounded"
-                                >
-                                  {c}
-                                </div>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
+                  <>
+                    <div className="mt-4 flex flex-col sm:flex-row gap-4">
+                      {/* FROM CURRENCY Popover */}
+                      <div className="w-full sm:w-1/2">
+                        <label className="block text-sm font-medium mb-1">From Currency</label>
+                        <Popover open={openFrom} onOpenChange={setOpenFrom}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline"
+                                    className="w-full justify-between"
+                                    onClick={() => setOpenFrom((prev) => !prev)}
+                            >
+                              {fromCurrency} <ChevronDown className="ml-2 h-4 w-4"/>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-72 p-2">
+                            <Input
+                                placeholder="Search currency..."
+                                value={searchFrom}
+                                onChange={(e) => setSearchFrom(e.target.value)}
+                                className="mb-2"
+                            />
+                            <div className="max-h-48 overflow-auto">
+                              {filteredFromCurrencies.map((c) => (
+                                  <div
+                                      key={c}
+                                      onClick={() => {
+                                        handleFromCurrency(c);
+                                        setOpenFrom(false);
+                                      }}
+                                      className="cursor-pointer p-2 hover:bg-gray-100 rounded"
+                                  >
+                                    {c}
+                                  </div>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
 
-                    {/* TO CURRENCY Popover */}
-                    <div className="w-full sm:w-1/2">
-                      <label className="block text-sm font-medium mb-1">To
-                        Currency: {currentCurrencySymbol()}</label>
+                      {/* TO CURRENCY Popover */}
+                      <div className="w-full sm:w-1/2">
+                        <label className="block text-sm font-medium mb-1">To
+                          Currency: {currentCurrency()}</label>
+                      </div>
                     </div>
-                  </div>
+                    <div className="mt-6 flex items-center justify-between font-bold">
+                      <span>Set a custom conversion price</span>
+                      <Switch
+                          checked={customCurrencyConversion}
+                          onCheckedChange={handleCustomCurrencyConversion}
+                      />
+                    </div>
+                    {customCurrencyConversion && (
+                      <p className="mt-2 text-sm text-gray-600">
+                        <input
+                            type="number"
+                            placeholder="Enter a custom conversion price"
+                            value={customConversionPrice}
+                            onChange={(e) => handleCustomCurrencyConversionPrice(+e.target.value)}
+                            className="border border-gray-300 rounded-md p-2 w-full"
+                        />
+                      </p>
+                    )}
+                  </>
               )}
             </Card>
           </TabsContent>

@@ -20,6 +20,8 @@ export function ExpenseAmountInput({
                                    }: ExpenseAmountInputProps) {
     const [fromCurrency, setFromCurrency] = useState("");
     const [currencyConversion, setCurrencyConversion] = useState(false);
+    const [customCurrencyConversion, setCustomCurrencyConversion] = useState(false);
+    const [customCurrencyConversionPrice, setCustomCurrencyConversionPrice] = useState(1);
     const [ratePrice, setRatePrice] = useState(1);
     const [convertedAmount, setConvertedAmount] = useState(0);
     const [labelCurrency, setLabelCurrency] = useState(false);
@@ -46,6 +48,8 @@ export function ExpenseAmountInput({
         const savedCurrencyConversion = localStorage.getItem("currencyConversion");
         const savedRates = localStorage.getItem("currencyRates");
         const savedFromCurrency = localStorage.getItem("fromCurrency");
+        const customCurrencyConversion = localStorage.getItem("customCurrencyConversion");
+        const customCurrencyConversionPrice = localStorage.getItem("customCurrencyConversionPrice");
 
         if (savedCurrencyConversion && JSON.parse(savedCurrencyConversion) === true && savedRates && !isEdit) {
             setCurrencyConversion(true);
@@ -54,8 +58,11 @@ export function ExpenseAmountInput({
             }
 
             const parsedRates = JSON.parse(savedRates);
-            const currentRate =
+            let currentRate =
                 parsedRates?.rates?.[savedFromCurrency]?.conversion_rates?.[currency] || 1;
+            if (customCurrencyConversion && JSON.parse(customCurrencyConversion) === true && customCurrencyConversionPrice) {
+                currentRate = +JSON.parse(customCurrencyConversionPrice);
+            }
             setRatePrice(currentRate);
         }
     }, [currency]);
