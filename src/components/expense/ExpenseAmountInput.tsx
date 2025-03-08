@@ -25,6 +25,7 @@ export function ExpenseAmountInput({
     const [ratePrice, setRatePrice] = useState(1);
     const [convertedAmount, setConvertedAmount] = useState(0);
     const [labelCurrency, setLabelCurrency] = useState(false);
+    const [displayValue, setDisplayValue] = useState("");
 
     const category = getCategories()[categoryID];
     const currency = currentCurrency();
@@ -42,6 +43,16 @@ export function ExpenseAmountInput({
     useEffect(() => {
         inputRef.current?.focus();
     }, []);
+
+    // Format display value when amount changes
+    useEffect(() => {
+        if (amount !== undefined && amount !== null) {
+            // Format with commas for display only
+            setDisplayValue(amount.toString());
+        } else {
+            setDisplayValue("");
+        }
+    }, [amount]);
 
     // Load conversion settings/rate on mount
     useEffect(() => {
@@ -84,6 +95,33 @@ export function ExpenseAmountInput({
         }
     };
 
+    // Format amount with commas for display purposes
+    const formatWithCommas = (value: string) => {
+        // Remove any non-numeric characters except decimal point
+        const cleanValue = value.replace(/[^\d.]/g, '');
+
+        // Split by decimal point
+        const parts = cleanValue.split('.');
+
+        // Format the integer part with commas
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+        // Join back with decimal part if it exists
+        return parts.length > 1 ? parts.join('.') : parts[0];
+    };
+
+    // Handle input change
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Get the raw value typed by user
+        const rawValue = e.target.value;
+
+        // Remove commas to get the actual numeric value
+        const numericValue = rawValue.replace(/,/g, '');
+
+        // Update the actual amount value (without commas)
+        onAmountChange(parseFloat(numericValue) || 0);
+    };
+
     // Disable conversion
     const disableConversion = () => {
         const confirmed = window.confirm("You will disable currency conversion only for this expense. To permanently disable currency conversion, please go to Settings.");
@@ -110,20 +148,30 @@ export function ExpenseAmountInput({
                     </div>
 
                     {/* Amount Input */}
-                    <Input
-                        id="amount"
-                        type="number"
-                        step="0.01"
-                        required
-                        ref={inputRef}
-                        value={amount || ""}
-                        placeholder="0.00"
-                        onChange={(e) => onAmountChange(parseFloat(e.target.value) || 0)}
-                        onFocus={handleFocus}
-                        onBlur={handleBlur}
-                        className="ml-4 w-full bg-transparent border-none outline-none text-2xl font-bold text-right ring-0 ring-transparent"
-                        style={{ color: category?.color }}
-                    />
+                    <div className="relative ml-4 w-full">
+                        {/* Visible formatted input (for display only) */}
+                        <div
+                            className="w-full bg-transparent text-2xl font-bold text-right"
+                            style={{ color: category?.color }}
+                        >
+                            {formatWithCommas(displayValue)}
+                        </div>
+
+                        {/* Actual hidden input for handling raw numeric values */}
+                        <Input
+                            id="amount"
+                            type="number"
+                            step="0.5"
+                            required
+                            ref={inputRef}
+                            value={amount || ""}
+                            placeholder="0.00"
+                            onChange={handleInputChange}
+                            onFocus={handleFocus}
+                            onBlur={handleBlur}
+                            className="absolute top-0 left-0 w-full h-full opacity-0 cursor-text"
+                        />
+                    </div>
 
                     <span className="ml-2 text-2xl font-bold" style={{ color: category?.color }}>
                         {labelCurrency ? fromCurrency : currency}
