@@ -12,7 +12,8 @@ interface ExpenseGroupProps {
 }
 
 export function ExpenseGroup({ date, expenses, onEdit, onDelete, isFutureDate }: ExpenseGroupProps) {
-    const totalAmount = expenses.reduce((sum: number, exp: any) => sum + exp.amount, 0);
+    const totalWithExcluded = expenses.reduce((sum: number, exp: any) => sum + exp.amount, 0);
+    const totalWithoutExcluded = expenses.reduce((sum: number, exp: any) => exp.excludeFromAvg ? sum : sum + exp.amount, 0);
     const isDateInFuture = isFutureDate(date);
     // Create a ref for this section
     const sectionRef = useRef<HTMLDivElement>(null);
@@ -41,7 +42,10 @@ export function ExpenseGroup({ date, expenses, onEdit, onDelete, isFutureDate }:
                     <div>
                         <h3 className="text-base font-medium">{getRelativeDateLabel(date)}</h3>
                     </div>
-                    <p className="text-base font-medium">{totalAmount.toFixed(2)}</p>
+                    <p className="text-base font-medium">
+                        {totalWithoutExcluded.toFixed(2)}
+                        {totalWithoutExcluded !== totalWithExcluded && ` (${totalWithExcluded.toFixed(2)})`}
+                    </p>
                 </div>
             </div>
             <div className="space-y-1">
