@@ -286,8 +286,8 @@ export function TripList() {
                       <div>
                         <h4 className="font-semibold">{trip.name} <span className="text-gray-400">{selectedTripId === trip.id ? "[Current Trip]" : ""}</span></h4>
                         <p className="text-sm text-muted-foreground">
-                          {trip.dateRange.from && format(new Date(trip.dateRange.from), "LLL dd, y")} -{" "}
-                          {trip.dateRange.to && format(new Date(trip.dateRange.to), "LLL dd, y")}
+                          {trip.dateRange?.from && format(new Date(trip.dateRange?.from), "LLL dd, y")} -{" "}
+                          {trip.dateRange?.to && format(new Date(trip.dateRange?.to), "LLL dd, y")}
                         </p>
                         <p className="text-sm">
                           Daily: {trip.dailyBudget?.toFixed(2)} {trip.currency} |

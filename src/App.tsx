@@ -9,11 +9,13 @@ import Index from "./pages/Index";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import { TripProvider } from "./contexts/TripContext";
+import { backupToGoogleDrive } from "@/components/settings/GoogleDriveSync";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
+    // Check for currency conversion settings
     const savedCurrencyConversion = localStorage.getItem("currencyConversion");
     // If user allows currency conversion
     if (savedCurrencyConversion && JSON.parse(savedCurrencyConversion) === true) {
@@ -52,6 +54,48 @@ const App = () => {
         if (!lastUpdate || differenceInDays(new Date(), lastUpdate) >= 1) {
           fetchCurrencyRates().then();
         }
+      }
+    }
+
+    // Check if we need to back up to Google Drive
+    const lastBackupDate = localStorage.getItem("lastGoogleDriveBackup");
+    const saveDailyToCloud = localStorage.getItem("saveDailyToCloud") === "true";
+    const googleDriveToken = localStorage.getItem("googleDriveToken");
+    
+    if (saveDailyToCloud && googleDriveToken) {
+      const now = new Date();
+      const shouldBackup = !lastBackupDate || 
+                          differenceInDays(now, new Date(lastBackupDate)) >= 1;
+      
+      if (shouldBackup) {
+        // Add a delay to ensure everything is loaded
+        setTimeout(() => {
+          try {
+            // Add script for Google API
+            const script = document.createElement("script");
+            script.src = "https://apis.google.com/js/api.js";
+            script.async = true;
+            script.defer = true;
+            script.onload = () => {
+              window.gapi.load("client", async () => {
+                try {
+                  await window.gapi.client.init({
+                    apiKey: "AIzaSyDeD0_VIy2_ALNoaa71cMYLSQJcPbURzo4",
+                    discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"],
+                  });
+                  
+                  // Once API is initialized, trigger the backup
+                  backupToGoogleDrive();
+                } catch (error) {
+                  console.error("Error initializing Google API:", error);
+                }
+              });
+            };
+            document.head.appendChild(script);
+          } catch (error) {
+            console.error("Failed to backup to Google Drive:", error);
+          }
+        }, 5000); // 5 seconds delay
       }
     }
   }, []);

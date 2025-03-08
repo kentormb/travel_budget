@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { NewTripForm } from "@/components/settings/NewTripForm";
 import { TripList } from "@/components/settings/TripList";
 import { DataManagement } from "@/components/settings/DataManagement";
+import { GoogleDriveSync } from "@/components/settings/GoogleDriveSync";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
@@ -248,6 +249,12 @@ function Settings() {
                     )}
                   </>
               )}
+
+              {/* Google Drive Sync Section */}
+              <div className="mt-8 pt-6 border-t border-gray-200">
+                <h3 className="text-lg font-semibold mb-4">Cloud Backup</h3>
+                <GoogleDriveSync />
+              </div>
             </Card>
           </TabsContent>
         </Tabs>
