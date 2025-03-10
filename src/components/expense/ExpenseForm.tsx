@@ -8,6 +8,7 @@ import { defaultCategories } from "@/config/defaultCategories";
 import { DialogTitle } from "@/components/ui/dialog";
 import { useTrip } from "@/contexts/TripContext";
 import { ExpenseCategoryStep } from "../expense/ExpenseCategoryStep";
+import { initializeAutomaticBackup } from "@/components/settings/GoogleDriveSync";
 
 interface ExpenseFormProps {
   onSuccess?: () => void;
@@ -183,6 +184,9 @@ export function ExpenseForm({ onSuccess, expense }: ExpenseFormProps) {
     });
     setStep("category");
     setDate(undefined);
+
+    initializeAutomaticBackup();
+
     onSuccess?.();
   }, [formData, date, expense, onSuccess]);
 

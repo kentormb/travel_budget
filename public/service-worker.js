@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = "travel-expenses-cache-v21";
+const CACHE_NAME = "travel-expenses-cache-v22";
 
 /// Immediately take control of pages
 self.addEventListener("install", (event) => {
@@ -32,6 +32,11 @@ self.addEventListener("fetch", (event) => {
 
     // Skip non-HTTP/HTTPS requests (chrome-extension://, data:, etc.)
     if (!request.url.startsWith('http')) {
+        return;
+    }
+
+    // Skip POST requests as they can't be cached
+    if (request.method !== 'GET') {
         return;
     }
 
