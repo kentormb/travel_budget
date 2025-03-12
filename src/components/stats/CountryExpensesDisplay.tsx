@@ -1,5 +1,5 @@
 import React from "react";
-import { getCurrencySymbol } from "@/utils/helpers";
+import { getCurrencySymbol, formatWithCommas } from "@/utils/helpers";
 
 interface CountryExpense {
     country: string;
@@ -45,13 +45,13 @@ export const CountryExpensesDisplay: React.FC<Props> = ({ data, currency, svgRef
                             <div className="text-right">
                                 <div className="text-green-500 font-bold text-sm">Budget</div>
                                 <div className="font-medium">
-                                    {item.totalBudget.toFixed(0)} {getCurrencySymbol(currency)}
+                                    {formatWithCommas(item.totalBudget.toString(), false)} {getCurrencySymbol(currency)}
                                 </div>
                             </div>
                             <div className="text-right">
                                 <div className="text-yellow-500 font-bold text-sm">Spent</div>
                                 <div className="font-medium">
-                                    {item.totalSpent.toFixed(0)} {getCurrencySymbol(currency)}
+                                    {formatWithCommas(item.totalSpent.toString(), false)} {getCurrencySymbol(currency)}
                                 </div>
                             </div>
                         </div>

@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TimeBasedExpensesChart, TimeEntry } from "./TimeBasedExpensesChart";
 import { ExpensesBreakdown } from "./ExpensesBreakdown";
-import { format, startOfWeek, endOfWeek, getWeek, isWithinInterval } from "date-fns";
+import { format, startOfWeek, endOfWeek, getWeek } from "date-fns";
 
 interface TabbedExpensesChartProps {
     expenses: Array<{
@@ -86,7 +86,7 @@ export function TabbedExpensesChart({
             return acc;
         }, {});
 
-        const weeklyData = Object.values(byWeek).map(entry => ({
+        const weeklyData = Object.values(byWeek).map((entry: any) => ({
             ...entry,
             amount: Number(entry.amount)
         })).sort((a, b) => {
@@ -116,7 +116,7 @@ export function TabbedExpensesChart({
             return acc;
         }, {});
 
-        const dailyData = Object.values(byDay).map(entry => ({
+        const dailyData = Object.values(byDay).map((entry: any) => ({
             ...entry,
             amount: Number(entry.amount)
         })).sort((a, b) => {

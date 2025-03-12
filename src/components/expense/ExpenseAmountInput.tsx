@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import * as Icons from "lucide-react";
-import { currentCurrency, getCategories } from "@/utils/helpers";
+import { currentCurrency, getCategories, formatWithCommas } from "@/utils/helpers";
 import { useRef, useEffect, useState } from "react";
 
 interface ExpenseAmountInputProps {
@@ -93,21 +93,6 @@ export function ExpenseAmountInput({
             setLabelCurrency(true);
             onAmountChange(revertedValue);
         }
-    };
-
-    // Format amount with commas for display purposes
-    const formatWithCommas = (value: string) => {
-        // Remove any non-numeric characters except decimal point
-        const cleanValue = value.replace(/[^\d.]/g, '');
-
-        // Split by decimal point
-        const parts = cleanValue.split('.');
-
-        // Format the integer part with commas
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-
-        // Join back with decimal part if it exists
-        return parts.length > 1 ? parts.join('.') : parts[0];
     };
 
     // Handle input change

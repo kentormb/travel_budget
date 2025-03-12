@@ -1,5 +1,5 @@
 import React from "react";
-import { getCurrencySymbol } from "@/utils/helpers";
+import { getCurrencySymbol, formatWithCommas } from "@/utils/helpers";
 import { TimeEntry } from "./TimeBasedExpensesChart";
 
 interface ExpensesBreakdownProps {
@@ -52,9 +52,7 @@ export function ExpensesBreakdown({
                             >
                                 <span className="text-gray-600 font-medium">{entry.label}</span>
                                 <span className="text-gray-900 font-semibold">
-                                  {typeof entry.amount === 'number'
-                                      ? entry.amount.toFixed(2)
-                                      : entry.amount} {currencySymbol}
+                                    { formatWithCommas(entry.amount.toString(), false) } {currencySymbol}
                                 </span>
                             </li>
                         ))}

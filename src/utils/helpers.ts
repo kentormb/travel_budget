@@ -277,3 +277,19 @@ export async function getCoordinates(city: string, country: string) {
             console.error('Error fetching coordinates:', error);
         });
 }
+
+export const formatWithCommas = (value: string, hasDecimals: boolean = true) => {
+    if (!value) return value;
+
+    // Remove any non-numeric characters except decimal point
+    const cleanValue = value.replace(/[^\d.]/g, '');
+
+    // Split by decimal point
+    const parts = cleanValue.split('.');
+
+    // Format the integer part with commas
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    // Join back with decimal part if it exists
+    return parts.length > 1 && hasDecimals ? parts.join('.') : parts[0];
+};

@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { CountrySelect } from "./CountrySelect";
 import { useTrip } from "@/contexts/TripContext";
 import { format } from "date-fns";
-import {generalStats, getCategories, getCurrencySymbol, splitExpenses} from "@/utils/helpers";
+import {generalStats, getCategories, getCurrencySymbol, splitExpenses, formatWithCommas} from "@/utils/helpers";
 import {D3BarChart} from "@/components/stats/D3BarChart.tsx";
 import {D3PieChart} from "@/components/stats/D3PieChart.tsx";
 import { YearlyExpensesBreakdown } from "@/components/stats/YearlyExpensesBreakdown";
@@ -26,18 +26,63 @@ const MemoizedYearlyExpensesBreakdown = memo(YearlyExpensesBreakdown);
 const MemoizedMapView = memo(MapView);
 const MemoizedCountryExpensesChart = memo(CountryExpensesChart);
 
+interface IconProps {
+  iconName: string;
+  color: string
+}
+
+interface CardProps {
+  title: string;
+  value: number | string;
+  maxValue: number | string;
+  progress: number;
+  subtitle: string;
+  symbol: string;
+}
+
+interface CategoryItemProps {
+  amount: number;
+  name: string;
+  color: string;
+  icon: string;
+}
+
+interface CategoryItemsProps {
+  item: CategoryItemProps;
+  totalAmount: number;
+  currencySymbol: string;
+}
+
+interface ExpenseFiltersProps {
+  filters: any;
+  setFilters: any;
+  categories: any;
+  expenseNames: any;
+  locations: any;
+  onClearFilters: any;
+  hasFilters: any;
+}
+
+interface OtherCategoriesProps {
+  otherCategoriesList:any;
+  isExpanded:any;
+  onToggle:any;
+  totalAmount:any;
+  currencySymbol:any;
+}
+
 // Helper component extracted and memoized
-const IconComponent = memo(({ iconName, color }) => {
+const IconComponent = memo<IconProps>(({ iconName, color }) => {
   const Icon = (icons)[iconName];
   return Icon ? <Icon className="!h-5 !w-5" style={{color: color}} /> : null;
 });
 
 // Stats card component
-const StatsCard = memo(({ title, value, maxValue, progress, subtitle, symbol }) => (
+const StatsCard = memo<CardProps>(({ title, value, maxValue, progress, subtitle, symbol }) => (
     <Card className="p-3">
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-2xl font-bold text-secondary">
-        {value} {symbol}
+        {formatWithCommas(value.toString(), false)} {symbol}
       </p>
       {maxValue && (
           <div className="mt-4">
@@ -54,7 +99,7 @@ const StatsCard = memo(({ title, value, maxValue, progress, subtitle, symbol }) 
 ));
 
 // Category list item component
-const CategoryItem = memo(({ item, totalAmount, currencySymbol }) => {
+const CategoryItem = memo<CategoryItemsProps>(({ item, totalAmount, currencySymbol }) => {
   const percentage = ((item.amount / totalAmount) * 100).toFixed(1);
   return (
       <li
@@ -70,14 +115,14 @@ const CategoryItem = memo(({ item, totalAmount, currencySymbol }) => {
         </span>
         </div>
         <span className="text-md font-semibold">
-        {item.amount.toFixed(2)}{currencySymbol}
+        {formatWithCommas(item.amount.toString(), false)} {currencySymbol}
       </span>
       </li>
   );
 });
 
 // Filters component
-const ExpenseFilters = memo(({ filters, setFilters, categories, expenseNames, locations, onClearFilters, hasFilters }) => {
+const ExpenseFilters = memo<ExpenseFiltersProps>(({ filters, setFilters, categories, expenseNames, locations, onClearFilters, hasFilters }) => {
   const [showNameSuggestions, setShowNameSuggestions] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
 
@@ -103,7 +148,7 @@ const ExpenseFilters = memo(({ filters, setFilters, categories, expenseNames, lo
                 onChange={(e) => setFilters({...filters, category: e.target.value})}
             >
               <option value="">All Categories</option>
-              {Object.values(categories).map((category) => (
+              {Object.values(categories).map((category: any) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -239,7 +284,7 @@ const ExpenseFilters = memo(({ filters, setFilters, categories, expenseNames, lo
 });
 
 // Other categories component
-const OtherCategories = memo(({ otherCategoriesList, isExpanded, onToggle, totalAmount, currencySymbol }) => {
+const OtherCategories = memo<OtherCategoriesProps>(({ otherCategoriesList, isExpanded, onToggle, totalAmount, currencySymbol }) => {
   if (!otherCategoriesList || otherCategoriesList.amount <= 0) return null;
 
   return (
@@ -255,7 +300,7 @@ const OtherCategories = memo(({ otherCategoriesList, isExpanded, onToggle, total
             <span className="text-sm font-medium">{otherCategoriesList.name}</span>
           </div>
           <div className="flex items-center gap-2 font-semibold">
-            <span>{otherCategoriesList.amount.toFixed(2)}{currencySymbol}</span>
+            <span>{formatWithCommas(otherCategoriesList.amount.toString(), false)} {currencySymbol}</span>
             {isExpanded ? (
                 <ChevronDown className="h-4 w-4"/>
             ) : (
@@ -278,7 +323,7 @@ const OtherCategories = memo(({ otherCategoriesList, isExpanded, onToggle, total
                 </span>
                     </div>
                     <span className="text-md font-semibold">
-                {sub.amount.toFixed(2)} {currencySymbol}
+                {formatWithCommas(sub.amount.toString(), false)} {currencySymbol}
               </span>
                   </li>
               ))}
@@ -467,38 +512,6 @@ export function Dashboard() {
     };
   }, [filteredExpenses, categories]);
 
-  // Process monthly data
-  const monthlyData = useMemo(() => {
-    const data = filteredExpenses.reduce((acc, expense) => {
-      const month = format(new Date(expense.date), 'MMM');
-      const year = format(new Date(expense.date), 'yyyy');
-      const existingMonth = acc.find(item => item.month === month);
-
-      if (existingMonth) {
-        existingMonth.amount += expense.amount;
-      } else {
-        acc.push({ year, month, amount: expense.amount });
-      }
-
-      return acc;
-    }, []);
-
-    return data.sort((a, b) => {
-      const dateA = new Date(parseInt(a.year), monthIndexMap[a.month], 1);
-      const dateB = new Date(parseInt(b.year), monthIndexMap[b.month], 1);
-      return dateA.getTime() - dateB.getTime();
-    });
-  }, [filteredExpenses, monthIndexMap]);
-
-  // Process yearly data
-  const groupedByYear = useMemo(() => {
-    return monthlyData.reduce((acc, item) => {
-      if (!acc[item.year]) acc[item.year] = [];
-      acc[item.year].push({ year: item.year, month: item.month, amount: item.amount.toFixed(2) });
-      return acc;
-    }, {});
-  }, [monthlyData]);
-
   // Process country data
   const groupedByCountry = useMemo(() => {
     return Object.values(
@@ -523,7 +536,7 @@ export function Dashboard() {
 
           return acc;
         }, {})
-    ).map((entry) => ({
+    ).map((entry: any) => ({
       ...entry,
       days: entry.days.size,
       totalBudget: entry.days.size * stats.dailyBudget,
