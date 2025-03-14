@@ -8,7 +8,7 @@ import { defaultCategories } from "@/config/defaultCategories";
 import { DialogTitle } from "@/components/ui/dialog";
 import { useTrip } from "@/contexts/TripContext";
 import { ExpenseCategoryStep } from "../expense/ExpenseCategoryStep";
-import { initializeAutomaticBackup } from "@/components/settings/GoogleDriveSync";
+import { initializeAutomaticBackup } from "@/utils/googleDrive";
 
 interface ExpenseFormProps {
   onSuccess?: () => void;

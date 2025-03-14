@@ -15,11 +15,12 @@ interface Window {
         files: {
           list: (params: any) => Promise<any>;
           get: (params: any) => Promise<any>;
+          create: (params: any) => Promise<any>;
         }
       }
     };
   };
-  
+
   google: {
     accounts: {
       id: {

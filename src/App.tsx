@@ -14,11 +14,8 @@ const queryClient = new QueryClient();
 
 const App = () => {
   useEffect(() => {
-    // Check for currency conversion settings
     const savedCurrencyConversion = localStorage.getItem("currencyConversion");
-    // If user allows currency conversion
     if (savedCurrencyConversion && JSON.parse(savedCurrencyConversion) === true) {
-      // We'll fetch the currency data in the background if needed
       const fetchCurrencyRates = async () => {
         try {
           const response = await fetch(
