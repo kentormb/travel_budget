@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { GOOGLE_API, STORAGE_KEYS } from "@/types/google";
-import { ensureBackupFolderExists, updateFolderState } from "@/utils/googleDrive";
+import { ensureBackupFolderExists } from "@/utils/googleDrive";
 
 export function GoogleDriveSync() {
   const [saveDailyToCloud, setSaveDailyToCloud] = useState<boolean>(
@@ -109,7 +109,7 @@ export function GoogleDriveSync() {
     }
 
     const token = response.access_token;
-    
+
     // Validate token immediately
     try {
       const tokenResponse = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`);
@@ -118,7 +118,7 @@ export function GoogleDriveSync() {
         setIsSignedIn(false);
         return;
       }
-      
+
       setAccessToken(token);
       setIsSignedIn(true);
       localStorage.setItem(STORAGE_KEYS.TOKEN, token);
@@ -194,65 +194,163 @@ export function GoogleDriveSync() {
     try {
       window.gapi.client.setToken({ access_token: accessToken });
 
-      // Find backup file
+      // First try an open search to make sure we can find the file anywhere
+      let query = "name='" + STORAGE_KEYS.EXPORT_FILENAME + "' and mimeType='application/json' and trashed=false";
+
       const response = await window.gapi.client.drive.files.list({
-        q: "name='trips_backup.json' and mimeType='application/json'",
-        fields: "files(id, name, modifiedTime)",
-        pageSize: 1
+        q: query,
+        fields: "files(id, name, modifiedTime, parents)",
+        pageSize: 10
       });
 
-      const files = response.result.files;
+      let files = response.result.files;
+
+      // If no files found and we have a selected folder, try specifically with that folder
+      if ((!files || files.length === 0) && selectedFolder) {
+        const folderQuery = `name='${STORAGE_KEYS.EXPORT_FILENAME}' and mimeType='application/json' and trashed=false and '${selectedFolder}' in parents`;
+        console.log("No files found in general search. Trying with specific folder:", folderQuery);
+
+        const folderResponse = await window.gapi.client.drive.files.list({
+          q: folderQuery,
+          fields: "files(id, name, modifiedTime, parents)",
+          pageSize: 5
+        });
+
+        files = folderResponse.result.files;
+      }
+
+      // If still no files found, try one more time with the backup folder name
+      if (!files || files.length === 0) {
+        // Try to find the backup folder first
+        console.log("Searching for backup folder by name:", GOOGLE_API.BACKUP_FOLDER_NAME);
+        const folderSearchResponse = await window.gapi.client.drive.files.list({
+          q: `name='${GOOGLE_API.BACKUP_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+          fields: "files(id, name)",
+          pageSize: 2
+        });
+
+        const folders = folderSearchResponse.result.files;
+        if (folders && folders.length > 0) {
+          const foundFolder = folders[0];
+          console.log("Found backup folder:", foundFolder);
+
+          // Search in this specific folder
+          const finalQuery = `name='${STORAGE_KEYS.EXPORT_FILENAME}' and mimeType='application/json' and trashed=false and '${foundFolder.id}' in parents`;
+          console.log("Final search attempt with query:", finalQuery);
+
+          const finalResponse = await window.gapi.client.drive.files.list({
+            q: finalQuery,
+            fields: "files(id, name, modifiedTime, parents)",
+            pageSize: 5
+          });
+
+          files = finalResponse.result.files;
+
+          // Update folder info if found
+          if (files && files.length > 0) {
+            updateComponentFolderState(foundFolder.id, foundFolder.name);
+          }
+        }
+      }
 
       if (files && files.length > 0) {
         const file = files[0];
 
-        // Get file content
-        const fileResponse = await window.gapi.client.drive.files.get({
-          fileId: file.id,
-          alt: 'media'
-        });
+        try {
+          const fileResponse = await window.gapi.client.drive.files.get({
+            fileId: file.id,
+            alt: 'media'
+          });
 
-        importTripsData(fileResponse.body);
+          if (fileResponse.body) {
+            importTripsData(fileResponse.body);
+          } else {
+            throw new Error("Empty file content received");
+          }
+        } catch (fileError) {
+          try {
+            console.log("Trying alternative fetch approach for file:", file.id);
+            const fetchResponse = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`
+              }
+            });
+
+            if (!fetchResponse.ok) {
+              throw new Error(`Fetch failed with status: ${fetchResponse.status}`);
+            }
+
+            const content = await fetchResponse.text();
+            importTripsData(content);
+          } catch (altError) {
+            toast.error("Failed to download backup file content");
+          }
+        }
       } else {
         toast.info("No backup file found in Google Drive");
       }
     } catch (error) {
-      console.error("Error fetching files from Google Drive:", error);
       toast.error("Failed to fetch data from Google Drive");
     }
   };
 
   const importTripsData = (fileContent: string) => {
     try {
-      const existingTrips = JSON.parse(localStorage.getItem(STORAGE_KEYS.TRIPS) || "[]");
-      const jsonData = JSON.parse(fileContent);
-
-      let itemsCount = 0;
-      jsonData.forEach((item: any) => {
-        if (item?.id && item?.name && item?.expenses) {
-          itemsCount++;
-        }
-      });
-
-      if (itemsCount === 0) {
-        throw new Error("Invalid JSON format: no trips found in array");
+      if (!fileContent || fileContent.trim() === "") {
+        toast.error("The backup file is empty");
+        return;
       }
 
-      // Merge data with existing trips
+      // Try to parse the JSON content
+      let jsonData;
+      try {
+        jsonData = JSON.parse(fileContent);
+      } catch (parseError) {
+        toast.error("The backup file contains invalid JSON data");
+        return;
+      }
+
+      if (!Array.isArray(jsonData)) {
+        toast.error("Invalid backup format: expected an array of trips");
+        return;
+      }
+
+      const existingTrips = JSON.parse(localStorage.getItem(STORAGE_KEYS.TRIPS) || "[]");
+      const validTrips = [];
+      let invalidTrips = 0;
+
+      for (const item of jsonData) {
+        if (item?.id && item?.name && Array.isArray(item?.expenses)) {
+          validTrips.push(item);
+        } else {
+          invalidTrips++;
+        }
+      }
+
+      if (validTrips.length === 0) {
+        toast.error("No valid trips found in the backup file");
+        return;
+      }
+
+      if (invalidTrips > 0) {
+        console.warn(`Found ${invalidTrips} invalid trips in the backup`);
+      }
+
       const updatedTrips = [...existingTrips];
-      jsonData.forEach((newTrip: any) => {
+      validTrips.forEach((newTrip: any) => {
         const duplicate = existingTrips.find((trip: any) => trip.id === newTrip.id);
         if (duplicate) {
-          newTrip.id = `${newTrip.id}-${Math.random().toString(36).substring(2, 3)}`;
+          const index = existingTrips.indexOf(duplicate);
+          updatedTrips[index] = newTrip;
+        } else {
+          updatedTrips.push(newTrip);
         }
-        updatedTrips.push(newTrip);
       });
 
       localStorage.setItem(STORAGE_KEYS.TRIPS, JSON.stringify(updatedTrips));
-      toast.success(`Imported ${itemsCount} trips from Google Drive!`);
+      toast.success(`Imported ${validTrips.length} trips from Google Drive!`);
       window.dispatchEvent(new Event('storageChange'));
     } catch (error) {
-      console.error("Import error:", error);
       toast.error("Error importing data from Google Drive.");
     }
   };

@@ -12,5 +12,6 @@ export const STORAGE_KEYS = {
     FOLDER_ID: "googleDriveFolder",
     FOLDER_NAME: "googleDriveFolderName",
     LAST_BACKUP: "lastGoogleDriveBackup",
-    TRIPS: "trips"
+    TRIPS: "trips",
+    EXPORT_FILENAME: "trips_backup.json"
 };

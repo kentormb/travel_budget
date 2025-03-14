@@ -13,7 +13,6 @@ export function loadGapiAndBackup(token: string) {
         script.defer = true;
 
         script.onload = () => {
-            console.log("GAPI script loaded successfully");
             window.gapi.load("client", () => initializeGapiAndBackup(token));
         };
 
@@ -45,18 +44,16 @@ export function backupToGoogleDrive() {
     const storedToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
 
     if (!saveDailyToCloud || !storedToken) {
-        console.log("Auto-backup skipped: daily backup not enabled or no token available");
         return;
     }
 
     const tripsData = localStorage.getItem(STORAGE_KEYS.TRIPS);
     if (!tripsData) {
-        console.log("No trips data found to backup");
         return;
     }
 
     const fileData = new Blob([tripsData], { type: "application/json" });
-    const fileName = "trips_backup.json";
+    const fileName = STORAGE_KEYS.EXPORT_FILENAME;
 
     uploadToGoogleDrive(fileData, fileName, storedToken)
         .then(success => {
@@ -124,7 +121,6 @@ export async function ensureBackupFolderExists(token: string) {
 
             const result = response.result;
             updateFolderState(result.id, result.name);
-            console.log("Created backup folder in Google Drive");
             return result.id;
         } catch (gapiError) {
             console.warn("GAPI folder creation failed:", gapiError);
@@ -147,7 +143,6 @@ export async function ensureBackupFolderExists(token: string) {
                 const folderResult = await folderResponse.json();
                 folderId = folderResult.id;
                 updateFolderState(folderId, GOOGLE_API.BACKUP_FOLDER_NAME);
-                console.log("Created backup folder in Google Drive (fetch API)");
                 return folderId;
             }
         }
@@ -179,7 +174,7 @@ export async function uploadToGoogleDrive(fileData: Blob, fileName: string, toke
             console.error("Error validating token:", tokenError);
             return false;
         }
-        
+
         if (window.gapi?.client) {
             window.gapi.client.setToken({ access_token: token });
         }
@@ -296,13 +291,13 @@ export async function initializeGapiAndBackup(token: string) {
         // Check if token is valid
         try {
             const response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`);
-            
+
             if (!response.ok) {
                 console.error("Token validation failed:", await response.text());
                 localStorage.removeItem(STORAGE_KEYS.TOKEN);
                 return;
             }
-            
+
             window.gapi.client.setToken({ access_token: token });
             backupToGoogleDrive();
         } catch (error) {
