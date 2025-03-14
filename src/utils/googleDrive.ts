@@ -56,29 +56,80 @@ export function backupToGoogleDrive() {
     }
 
     const fileData = new Blob([tripsData], { type: "application/json" });
-    const date = new Date();
-    const formattedDate = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
-    const fileName = `trips_backup_${formattedDate}.json`;
+    const fileName = "trips_backup.json";
 
-    uploadToGoogleDrive(fileData, fileName, storedToken).then();
+    uploadToGoogleDrive(fileData, fileName, storedToken)
+        .then(success => {
+            if (success) {
+                console.log("Backup completed successfully");
+            } else {
+                console.warn("Backup failed");
+            }
+        })
+        .catch(err => {
+            console.error("Error during backup:", err);
+        });
 }
 
-export async function uploadToGoogleDrive(fileData: Blob, fileName: string, token: string) {
+export async function ensureBackupFolderExists(token: string) {
     try {
+        // Initialize API with token if needed
+        if (window.gapi?.client && !window.gapi.client.drive) {
+            await window.gapi.client.init({
+                apiKey: GOOGLE_API.API_KEY,
+                discoveryDocs: GOOGLE_API.DISCOVERY_DOCS,
+            });
+        }
+
         if (window.gapi?.client) {
             window.gapi.client.setToken({ access_token: token });
         }
 
         let folderId = localStorage.getItem(STORAGE_KEYS.FOLDER_ID);
 
-        if (!folderId) {
-            if (window.gapi?.client && !window.gapi.client.drive) {
-                await window.gapi.client.init({
-                    apiKey: GOOGLE_API.API_KEY,
-                    discoveryDocs: GOOGLE_API.DISCOVERY_DOCS,
-                });
-            }
+        if (folderId) {
+            return folderId;
+        }
 
+        // Search for existing folder
+        try {
+            const response = await window.gapi.client.drive.files.list({
+                q: `mimeType='application/vnd.google-apps.folder' and name='${GOOGLE_API.BACKUP_FOLDER_NAME}' and trashed=false`,
+                fields: "files(id, name)",
+                spaces: "drive"
+            });
+
+            const folders = response.result.files;
+
+            if (folders && folders.length > 0) {
+                const folder = folders[0];
+                updateFolderState(folder.id, folder.name);
+                return folder.id;
+            }
+        } catch (error) {
+            console.warn("Error searching for folder:", error);
+        }
+
+        // Create new folder
+        try {
+            // Try GAPI method first
+            const response = await window.gapi.client.drive.files.create({
+                resource: {
+                    name: GOOGLE_API.BACKUP_FOLDER_NAME,
+                    mimeType: 'application/vnd.google-apps.folder',
+                    parents: ['root']
+                },
+                fields: 'id,name'
+            });
+
+            const result = response.result;
+            updateFolderState(result.id, result.name);
+            console.log("Created backup folder in Google Drive");
+            return result.id;
+        } catch (gapiError) {
+            console.warn("GAPI folder creation failed:", gapiError);
+
+            // Fallback to fetch API
             const folderResponse = await fetch('https://www.googleapis.com/drive/v3/files', {
                 method: 'POST',
                 headers: {
@@ -95,11 +146,47 @@ export async function uploadToGoogleDrive(fileData: Blob, fileName: string, toke
             if (folderResponse.ok) {
                 const folderResult = await folderResponse.json();
                 folderId = folderResult.id;
-                localStorage.setItem(STORAGE_KEYS.FOLDER_ID, folderId);
-                localStorage.setItem(STORAGE_KEYS.FOLDER_NAME, GOOGLE_API.BACKUP_FOLDER_NAME);
+                updateFolderState(folderId, GOOGLE_API.BACKUP_FOLDER_NAME);
+                console.log("Created backup folder in Google Drive (fetch API)");
+                return folderId;
             }
         }
 
+        console.error("Failed to create or find backup folder");
+        return null;
+    } catch (error) {
+        console.error("Error ensuring backup folder exists:", error);
+        return null;
+    }
+}
+
+export function updateFolderState(id: string, name: string) {
+    localStorage.setItem(STORAGE_KEYS.FOLDER_ID, id);
+    localStorage.setItem(STORAGE_KEYS.FOLDER_NAME, name);
+}
+
+export async function uploadToGoogleDrive(fileData: Blob, fileName: string, token: string) {
+    try {
+        // Validate token before proceeding
+        try {
+            const tokenResponse = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`);
+            if (!tokenResponse.ok) {
+                console.error("Invalid token, cannot upload to Google Drive");
+                localStorage.removeItem(STORAGE_KEYS.TOKEN);
+                return false;
+            }
+        } catch (tokenError) {
+            console.error("Error validating token:", tokenError);
+            return false;
+        }
+        
+        if (window.gapi?.client) {
+            window.gapi.client.setToken({ access_token: token });
+        }
+
+        let folderId = await ensureBackupFolderExists(token);
+
+        // Look for existing backup file
         let fileId = null;
         try {
             let query = `name='${fileName}' and mimeType='application/json' and trashed=false`;
@@ -127,6 +214,7 @@ export async function uploadToGoogleDrive(fileData: Blob, fileName: string, toke
         }
 
         if (fileId) {
+            // Update existing file
             const updateResponse = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`, {
                 method: 'PATCH',
                 headers: {
@@ -144,8 +232,10 @@ export async function uploadToGoogleDrive(fileData: Blob, fileName: string, toke
 
             const now = new Date().toISOString();
             localStorage.setItem(STORAGE_KEYS.LAST_BACKUP, now);
+            console.log('Backup file updated successfully');
             return true;
         } else {
+            // Create new file
             const metadata: any = {
                 name: fileName,
                 mimeType: 'application/json',
@@ -203,9 +293,22 @@ export async function initializeGapiAndBackup(token: string) {
             discoveryDocs: GOOGLE_API.DISCOVERY_DOCS,
         });
 
-        window.gapi.client.setToken({ access_token: token });
-
-        backupToGoogleDrive();
+        // Check if token is valid
+        try {
+            const response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`);
+            
+            if (!response.ok) {
+                console.error("Token validation failed:", await response.text());
+                localStorage.removeItem(STORAGE_KEYS.TOKEN);
+                return;
+            }
+            
+            window.gapi.client.setToken({ access_token: token });
+            backupToGoogleDrive();
+        } catch (error) {
+            console.error("Token validation error:", error);
+            localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        }
     } catch (error) {
         console.error("Error initializing Google API client:", error);
     }

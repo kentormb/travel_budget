@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { GOOGLE_API, STORAGE_KEYS } from "@/types/google";
+import { ensureBackupFolderExists, updateFolderState } from "@/utils/googleDrive";
 
 export function GoogleDriveSync() {
   const [saveDailyToCloud, setSaveDailyToCloud] = useState<boolean>(
@@ -108,109 +109,39 @@ export function GoogleDriveSync() {
     }
 
     const token = response.access_token;
-    setAccessToken(token);
-    setIsSignedIn(true);
-    localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+    
+    // Validate token immediately
+    try {
+      const tokenResponse = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`);
+      if (!tokenResponse.ok) {
+        toast.error("Authentication failed. Please try again.");
+        setIsSignedIn(false);
+        return;
+      }
+      
+      setAccessToken(token);
+      setIsSignedIn(true);
+      localStorage.setItem(STORAGE_KEYS.TOKEN, token);
 
-    setTimeout(() => ensureBackupFolderExists(token), 1000);
+      setTimeout(async () => {
+        const folderId = await ensureBackupFolderExists(token);
+        if (folderId) {
+          const folderName = localStorage.getItem(STORAGE_KEYS.FOLDER_NAME) || GOOGLE_API.BACKUP_FOLDER_NAME;
+          updateComponentFolderState(folderId, folderName);
+        }
+      }, 1000);
+    } catch (error) {
+      console.error("Error validating token:", error);
+      toast.error("Authentication validation failed. Please try again.");
+      setIsSignedIn(false);
+    }
   }, []);
 
-  const ensureBackupFolderExists = async (token: string) => {
-    try {
-      // Initialize API with token
-      await window.gapi.client.init({
-        apiKey: GOOGLE_API.API_KEY,
-        discoveryDocs: GOOGLE_API.DISCOVERY_DOCS,
-      });
-
-      window.gapi.client.setToken({ access_token: token });
-
-      // Search for existing folder
-      try {
-        const response = await window.gapi.client.drive.files.list({
-          q: `mimeType='application/vnd.google-apps.folder' and name='${GOOGLE_API.BACKUP_FOLDER_NAME}' and trashed=false`,
-          fields: "files(id, name)",
-          spaces: "drive"
-        });
-
-        const folders = response.result.files;
-
-        if (folders && folders.length > 0) {
-          const folder = folders[0];
-          updateFolderState(folder.id, folder.name);
-          return folder.id;
-        }
-      } catch (error) {
-        console.warn("Error searching for folder:", error);
-      }
-
-      return await createNewFolder(GOOGLE_API.BACKUP_FOLDER_NAME, token);
-    } catch (error) {
-      console.error("Error ensuring backup folder exists:", error);
-      return null;
-    }
-  };
-
-  const updateFolderState = (id: string, name: string) => {
+  const updateComponentFolderState = (id: string, name: string) => {
     setSelectedFolder(id);
     setFolderName(name);
     localStorage.setItem(STORAGE_KEYS.FOLDER_ID, id);
     localStorage.setItem(STORAGE_KEYS.FOLDER_NAME, name);
-  };
-
-  const createNewFolder = async (folderName: string, token: string) => {
-    try {
-      try {
-        window.gapi.client.setToken({ access_token: token });
-
-        const response = await window.gapi.client.drive.files.create({
-          resource: {
-            name: folderName,
-            mimeType: 'application/vnd.google-apps.folder',
-            parents: ['root']
-          },
-          fields: 'id,name'
-        });
-
-        const result = response.result;
-        updateFolderState(result.id, result.name);
-        toast.success("Created backup folder in Google Drive");
-        return result.id;
-      } catch (gapiError) {
-        console.warn("GAPI method failed:", gapiError);
-
-        const response = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,name', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: folderName,
-            mimeType: 'application/vnd.google-apps.folder',
-            parents: ['root']
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to create folder: ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        if (!result.id) {
-          throw new Error("No folder ID returned in response");
-        }
-
-        updateFolderState(result.id, folderName);
-        toast.success("Created backup folder in Google Drive");
-        return result.id;
-      }
-    } catch (error) {
-      console.error("All folder creation methods failed:", error);
-      toast.error("Failed to create Google Drive folder");
-      return null;
-    }
   };
 
   const handleGoogleAuth = () => {
@@ -245,14 +176,28 @@ export function GoogleDriveSync() {
       return;
     }
 
+    // Validate token before proceeding
+    try {
+      const tokenResponse = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(accessToken)}`);
+      if (!tokenResponse.ok) {
+        toast.error("Your Google Drive authentication has expired. Please reconnect.");
+        setIsSignedIn(false);
+        localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        return;
+      }
+    } catch (tokenError) {
+      console.error("Error validating token:", tokenError);
+      toast.error("Failed to validate Google authentication.");
+      return;
+    }
+
     try {
       window.gapi.client.setToken({ access_token: accessToken });
 
-      // Find most recent backup file
+      // Find backup file
       const response = await window.gapi.client.drive.files.list({
-        q: "name contains 'trips_backup_' and mimeType='application/json'",
+        q: "name='trips_backup.json' and mimeType='application/json'",
         fields: "files(id, name, modifiedTime)",
-        orderBy: "modifiedTime desc",
         pageSize: 1
       });
 
@@ -269,7 +214,7 @@ export function GoogleDriveSync() {
 
         importTripsData(fileResponse.body);
       } else {
-        toast.info("No backup files found in Google Drive");
+        toast.info("No backup file found in Google Drive");
       }
     } catch (error) {
       console.error("Error fetching files from Google Drive:", error);
