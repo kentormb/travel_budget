@@ -18,6 +18,7 @@ export function GoogleDriveSync() {
       localStorage.getItem(STORAGE_KEYS.SAVE_DAILY) === "true"
   );
   const [isGoogleApiLoaded, setIsGoogleApiLoaded] = useState<boolean>(false);
+  const [isGapiLoading, setIsGapiLoading] = useState<boolean>(false);
   const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
   const [accessToken, setAccessToken] = useState<string>("");
   const [selectedFolder, setSelectedFolder] = useState<string>(
@@ -39,37 +40,104 @@ export function GoogleDriveSync() {
       checkAndRefreshToken(storedToken);
     }
     
-    // Load Google API if needed for Drive operations
-    if (saveDailyToCloud) {
-      loadGoogleApi();
-    }
-  }, [saveDailyToCloud]);
+    // Always try to load Google API
+    loadGoogleApi();
+    
+    // Check for API status periodically if needed
+    const checkInterval = setInterval(() => {
+      if (isSignedIn && !isGoogleApiLoaded && !isGapiLoading) {
+        loadGoogleApi();
+      }
+    }, 3000);
+    
+    return () => clearInterval(checkInterval);
+  }, [saveDailyToCloud, isSignedIn, isGoogleApiLoaded, isGapiLoading]);
   
   const loadGoogleApi = () => {
-    if (window.gapi) return;
+    if (window.gapi?.client?.drive) {
+      setIsGoogleApiLoaded(true);
+      return;
+    }
+    
+    if (isGapiLoading) return;
+    
+    setIsGapiLoading(true);
+    console.log("Loading Google API...");
     
     try {
+      // Check if script is already loaded but not initialized
+      if (window.gapi) {
+        initializeGapi();
+        return;
+      }
+      
+      // Load the script
       const script = document.createElement("script");
       script.src = "https://apis.google.com/js/api.js";
       script.async = true;
       script.defer = true;
-      script.onload = () => {
-        window.gapi.load("client", async () => {
-          try {
-            await window.gapi.client.init({
-              apiKey: GOOGLE_API.API_KEY,
-              discoveryDocs: GOOGLE_API.DISCOVERY_DOCS,
-            });
-            setIsGoogleApiLoaded(true);
-          } catch (error) {
-            console.error("Error initializing Google API client:", error);
-          }
-        });
+      script.onload = initializeGapi;
+      script.onerror = () => {
+        console.error("Failed to load Google API script");
+        setIsGapiLoading(false);
       };
       document.head.appendChild(script);
     } catch (error) {
       console.error("Error setting up Google API script:", error);
+      setIsGapiLoading(false);
     }
+  };
+  
+  const initializeGapi = () => {
+    window.gapi.load("client", async () => {
+      try {
+        await window.gapi.client.init({
+          apiKey: GOOGLE_API.API_KEY,
+          discoveryDocs: GOOGLE_API.DISCOVERY_DOCS,
+        });
+        
+        // Set the access token if available
+        const storedToken = localStorage.getItem(STORAGE_KEYS.TOKEN);
+        if (storedToken) {
+          window.gapi.client.setToken({ access_token: storedToken });
+        }
+        
+        setIsGoogleApiLoaded(true);
+        console.log("Google API loaded successfully");
+      } catch (error) {
+        console.error("Error initializing Google API client:", error);
+      }
+      setIsGapiLoading(false);
+    });
+  };
+  
+  const loadAndWaitForGapi = () => {
+    return new Promise<void>((resolve) => {
+      // If already loaded, resolve immediately
+      if (isGoogleApiLoaded) {
+        resolve();
+        return;
+      }
+      
+      // Try to load GAPI
+      loadGoogleApi();
+      
+      // Set a timeout to check periodically
+      let attempts = 0;
+      const maxAttempts = 10;
+      const checkInterval = setInterval(() => {
+        attempts++;
+        
+        if (isGoogleApiLoaded || window.gapi?.client?.drive) {
+          clearInterval(checkInterval);
+          setIsGoogleApiLoaded(true);
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          clearInterval(checkInterval);
+          resolve(); // Resolve anyway, the calling function will check isGoogleApiLoaded
+        }
+      }, 500);
+    });
   };
 
   const checkAndRefreshToken = async (token: string) => {
@@ -260,6 +328,8 @@ export function GoogleDriveSync() {
     }
   };
 
+  const [isImporting, setIsImporting] = useState<boolean>(false);
+  
   const handleDataFromDrive = async () => {
     if (!isSignedIn || !accessToken) {
       toast.error("Please connect to Google Drive first");
@@ -267,9 +337,15 @@ export function GoogleDriveSync() {
     }
 
     if (!isGoogleApiLoaded) {
-      toast.error("Google Drive API is not ready. Please try again in a moment.");
-      return;
+      toast.info("Google Drive API is loading. Attempting to initialize...");
+      await loadAndWaitForGapi();
+      if (!isGoogleApiLoaded) {
+        toast.error("Unable to load Google Drive API. Please try again later.");
+        return;
+      }
     }
+    
+    setIsImporting(true);
 
     // Validate token before proceeding
     try {
@@ -389,7 +465,10 @@ export function GoogleDriveSync() {
         toast.info("No backup file found in Google Drive");
       }
     } catch (error) {
+      console.error("Failed to fetch data from Google Drive:", error);
       toast.error("Failed to fetch data from Google Drive");
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -488,10 +567,16 @@ export function GoogleDriveSync() {
                       <Button
                           variant="outline"
                           onClick={handleDataFromDrive}
+                          disabled={isImporting || !isGoogleApiLoaded}
                           className="flex-1 flex items-center justify-center gap-2"
                       >
-                        <Download className="h-4 w-4"/>
-                        Import data from Google Drive
+                        <Download className={`h-4 w-4 ${isImporting ? 'animate-bounce' : ''}`}/>
+                        {isImporting 
+                          ? "Importing data..." 
+                          : !isGoogleApiLoaded 
+                            ? "Loading API..." 
+                            : "Import data from Google Drive"
+                        }
                       </Button>
                       
                       <Button
@@ -499,6 +584,7 @@ export function GoogleDriveSync() {
                           onClick={handleManualRefresh}
                           disabled={isRefreshing}
                           className="flex items-center justify-center px-3"
+                          title="Refresh token"
                       >
                         <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}/>
                       </Button>
