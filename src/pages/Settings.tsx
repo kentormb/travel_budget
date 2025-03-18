@@ -12,7 +12,9 @@ import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import currencies from "@/data/currencies";
-import { currentCurrency } from "@/utils/helpers";
+import {currentCurrency, getUserLocation} from "@/utils/helpers";
+import {LocationData} from "@/types/location.ts";
+import {toast} from "sonner";
 
 function Settings() {
   const navigate = useNavigate();
@@ -104,6 +106,16 @@ function Settings() {
   const handleGpsEnabled = (gpsEnabled: boolean) => {
     setGpsEnabled(gpsEnabled);
     localStorage.setItem("gpsEnabled", JSON.stringify(gpsEnabled));
+    if (gpsEnabled) {
+      getUserLocation()
+          .then((locationData: LocationData) => {
+            setLocation(locationData);
+            localStorage.setItem("userLocation", JSON.stringify(locationData));
+          })
+          .catch((error) => {
+            toast.error("Location access denied");
+          });
+    }
   }
 
   const filteredFromCurrencies = currencies.filter((c) =>

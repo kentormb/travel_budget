@@ -231,6 +231,7 @@ export function getExpenseDays(expense: Expense & { toDate?: Date }): number {
 export function getUserLocation(): Promise<LocationData> {
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
+            console.error("Geolocation is not supported by this browser.");
             reject(new Error("Geolocation is not supported by this browser."));
             return;
         }
@@ -251,10 +252,12 @@ export function getUserLocation(): Promise<LocationData> {
                     };
                     resolve(locationData);
                 } catch (error) {
+                    console.error(error);
                     reject(error);
                 }
             },
             (error) => {
+                console.error(error);
                 reject(error);
             }
         );

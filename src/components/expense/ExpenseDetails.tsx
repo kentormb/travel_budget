@@ -13,7 +13,7 @@ import {getCoordinates, getUserLocation} from "@/utils/helpers";
 import { Checkbox } from "@/components/ui/checkbox";
 import { countries } from "@/data/countries";
 import { toast } from "sonner";
-import { useEffect } from "react";
+import {useEffect, useState} from "react";
 import {LocationData} from "@/types/location.ts";
 
 interface ExpenseDetailsProps {
@@ -36,16 +36,31 @@ export function ExpenseDetails({
                                    isEdit,
                                }: ExpenseDetailsProps) {
 
+    const [data, setData] = useState(formData);
+
     useEffect(() => {
         const gpsEnabled = localStorage.getItem("gpsEnabled");
         const updateLocation = localStorage.getItem("updateLocation");
+
         if (gpsEnabled && JSON.parse(gpsEnabled) && updateLocation && JSON.parse(updateLocation)) {
             getUserLocation()
                 .then((locationData: LocationData) => {
-                    formData.country = locationData.country;
-                    formData.location = locationData.city;
-                    formData.latitude = locationData.latitude;
-                    formData.longitude = locationData.longitude;
+                    const updatedData = {
+                        ...data,
+                        country: locationData.country,
+                        location: locationData.city,
+                        latitude: locationData.latitude,
+                        longitude: locationData.longitude
+                    };
+                    setData(updatedData);
+
+                    onFormDataChange({
+                        country: locationData.country,
+                        location: locationData.city,
+                        latitude: locationData.latitude,
+                        longitude: locationData.longitude
+                    });
+
                     const saveSelectedLocation = localStorage.getItem("saveSelectedLocation");
                     if (saveSelectedLocation && JSON.parse(saveSelectedLocation)) {
                         localStorage.setItem("userLocation", JSON.stringify(locationData));
@@ -55,7 +70,7 @@ export function ExpenseDetails({
                     toast.error("Location access denied");
                 });
         }
-    }, []);
+    }, []); // Empty dependency array to run only once
 
     const getCoords = () => {
         toast.info("Trying to get coordinates");
@@ -75,6 +90,7 @@ export function ExpenseDetails({
                 }
                 formData.latitude = res.latitude;
                 formData.longitude = res.longitude;
+                setData(formData);
                 toast.success("Coordinates for " + formData.location + ", " + country.name + " found");
             } else {
                 toast.error("Coordinates for " + formData.location + ", " + country.name + " not found, check location name");
@@ -85,7 +101,6 @@ export function ExpenseDetails({
     const onLocationChange = (target: string) => {
         onFormDataChange({ location: target });
     };
-
     return (
         <form onSubmit={onSubmit} className="space-y-6 expense-item-form">
             <div className="space-y-4">
@@ -117,7 +132,7 @@ export function ExpenseDetails({
                 <div className="space-y-2">
                     <Label>Country</Label>
                     <CountrySelect
-                        value={formData.country}
+                        value={data.country}
                         onChange={(value) => onFormDataChange({ country: value })}
                     />
                 </div>
@@ -127,7 +142,7 @@ export function ExpenseDetails({
                     <div className="flex items-center space-x-2">
                         <Input
                             id="location"
-                            value={formData.location}
+                            value={data.location}
                             onChange={(e) => onLocationChange(e.target.value)}
                             placeholder="Enter city or place"
                         />
