@@ -1,5 +1,8 @@
 import { GOOGLE_API, STORAGE_KEYS } from "@/types/google.ts";
 
+// PHP refresh token endpoint
+const REFRESH_TOKEN_URL = "https://cv.marios.com.gr/tracker/google_auth.php?refresh=1";
+
 export function loadGapiAndBackup(token: string) {
     if (window.gapi && window.gapi.client) {
         initializeGapiAndBackup(token).then();
@@ -34,8 +37,96 @@ export function initializeAutomaticBackup() {
         console.log("Initializing automatic backup to Google Drive...");
 
         setTimeout(() => {
-            loadGapiAndBackup(googleDriveToken);
+            // First check if token is valid, refresh if not
+            validateAndRefreshTokenIfNeeded(googleDriveToken)
+                .then(validToken => {
+                    if (validToken) {
+                        loadGapiAndBackup(validToken);
+                    }
+                })
+                .catch(err => {
+                    console.error("Error during token validation:", err);
+                });
         }, 1000);
+    }
+}
+
+export async function validateAndRefreshTokenIfNeeded(token: string): Promise<string | null> {
+    try {
+        // Try to validate the token
+        const tokenResponse = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`);
+        
+        if (tokenResponse.ok) {
+            // Token is still valid
+            return token;
+        }
+        
+        // Token is invalid, try to refresh it
+        return await refreshAccessToken();
+    } catch (error) {
+        console.error("Error validating token:", error);
+        // Try to refresh on error
+        return await refreshAccessToken();
+    }
+}
+
+export async function refreshAccessToken(): Promise<string | null> {
+    try {
+        const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+        if (!refreshToken) {
+            throw new Error("No refresh token available. Please reconnect to Google Drive.");
+        }
+        
+        console.log("Refreshing access token...");
+        const url = `${REFRESH_TOKEN_URL}&token=${encodeURIComponent(refreshToken)}`;
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        
+        let responseText;
+        try {
+            responseText = await response.text();
+        } catch (e) {
+            throw new Error(`Cannot read response: ${e}`);
+        }
+        
+        if (!response.ok) {
+            throw new Error(`Token refresh failed: ${response.status} - ${responseText}`);
+        }
+        
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
+        }
+        
+        if (data.error) {
+            throw new Error(`Refresh error: ${data.error} - ${data.error_description || 'Unknown error'}`);
+        }
+        
+        if (data.access_token) {
+            // Save the new access token
+            localStorage.setItem(STORAGE_KEYS.TOKEN, data.access_token);
+            
+            // Save the new refresh token if one is provided
+            if (data.refresh_token) {
+                localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+                console.log("New refresh token saved");
+            }
+            
+            console.log("Token refreshed successfully");
+            return data.access_token;
+        } else {
+            throw new Error(`No access token received in response: ${JSON.stringify(data)}`);
+        }
+    } catch (error) {
+        console.error("Token refresh failed:", error);
+        return null;
     }
 }
 
@@ -52,10 +143,19 @@ export function backupToGoogleDrive() {
         return;
     }
 
-    const fileData = new Blob([tripsData], { type: "application/json" });
-    const fileName = STORAGE_KEYS.EXPORT_FILENAME;
+    // Check if token is valid first, refresh if needed
+    validateAndRefreshTokenIfNeeded(storedToken)
+        .then(validToken => {
+            if (!validToken) {
+                console.error("Failed to get a valid token for backup");
+                return;
+            }
+            
+            const fileData = new Blob([tripsData], { type: "application/json" });
+            const fileName = STORAGE_KEYS.EXPORT_FILENAME;
 
-    uploadToGoogleDrive(fileData, fileName, storedToken)
+            return uploadToGoogleDrive(fileData, fileName, validToken);
+        })
         .then(success => {
             if (success) {
                 console.log("Backup completed successfully");
@@ -166,9 +266,13 @@ export async function uploadToGoogleDrive(fileData: Blob, fileName: string, toke
         try {
             const tokenResponse = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`);
             if (!tokenResponse.ok) {
-                console.error("Invalid token, cannot upload to Google Drive");
-                localStorage.removeItem(STORAGE_KEYS.TOKEN);
-                return false;
+                console.error("Invalid token, trying to refresh before upload");
+                const newToken = await refreshAccessToken();
+                if (!newToken) {
+                    console.error("Token refresh failed, cannot upload to Google Drive");
+                    return false;
+                }
+                token = newToken;
             }
         } catch (tokenError) {
             console.error("Error validating token:", tokenError);
@@ -288,22 +392,15 @@ export async function initializeGapiAndBackup(token: string) {
             discoveryDocs: GOOGLE_API.DISCOVERY_DOCS,
         });
 
-        // Check if token is valid
-        try {
-            const response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${encodeURIComponent(token)}`);
-
-            if (!response.ok) {
-                console.error("Token validation failed:", await response.text());
-                localStorage.removeItem(STORAGE_KEYS.TOKEN);
-                return;
-            }
-
-            window.gapi.client.setToken({ access_token: token });
-            backupToGoogleDrive();
-        } catch (error) {
-            console.error("Token validation error:", error);
-            localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        // Check if token is valid, refresh if needed
+        const validToken = await validateAndRefreshTokenIfNeeded(token);
+        if (!validToken) {
+            console.error("Failed to get a valid token for backup initialization");
+            return;
         }
+
+        window.gapi.client.setToken({ access_token: validToken });
+        backupToGoogleDrive();
     } catch (error) {
         console.error("Error initializing Google API client:", error);
     }

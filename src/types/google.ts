@@ -9,6 +9,7 @@ export const GOOGLE_API = {
 export const STORAGE_KEYS = {
     SAVE_DAILY: "saveDailyToCloud",
     TOKEN: "googleDriveToken",
+    REFRESH_TOKEN: "googleDriveRefreshToken",
     FOLDER_ID: "googleDriveFolder",
     FOLDER_NAME: "googleDriveFolderName",
     LAST_BACKUP: "lastGoogleDriveBackup",
