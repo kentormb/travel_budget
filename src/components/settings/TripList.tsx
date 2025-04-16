@@ -76,21 +76,25 @@ export function TripList() {
       return;
     }
 
-    setTrips(
-        trips.map((trip) => {
-          if (trip.id === editingTripId) {
-            return {
-              ...trip,
-              ...editedTrip,
-              dateRange: {
-                from: editDate.from,
-                to: editDate.to,
-              },
-            };
-          }
-          return trip;
-        })
-    );
+    const updatedTrips = trips.map((trip) => {
+      if (trip.id === editingTripId) {
+        return {
+          ...trip,
+          ...editedTrip,
+          dateRange: {
+            from: editDate.from,
+            to: editDate.to,
+          },
+        };
+      }
+      return trip;
+    });
+
+    setTrips(updatedTrips);
+    
+    // Save to localStorage
+    localStorage.setItem("trips", JSON.stringify(updatedTrips));
+    window.dispatchEvent(new Event('storageChange'));
 
     setEditingTripId(null);
     setEditedTrip({});
@@ -159,6 +163,22 @@ export function TripList() {
                             onChange={(e) => setEditedTrip({ ...editedTrip, name: e.target.value })}
                             placeholder="Trip name"
                         />
+                        <div className="mt-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setEditedTrip({ ...editedTrip, photo: reader.result as string });
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
                     </div>
 

@@ -27,6 +27,8 @@ function Settings() {
   const [openFrom, setOpenFrom] = useState(false);
   const [fromCurrency, setFromCurrency] = useState<string>("EUR");
   const [searchFrom, setSearchFrom] = useState<string>("");
+  const [trips, setTrips] = useState<any[]>([]);
+  const [showNewTripForm, setShowNewTripForm] = useState(false);
 
   const [location, setLocation] = useState({
     latitude: null,
@@ -45,6 +47,7 @@ function Settings() {
     const updateLocation = localStorage.getItem("updateLocation");
     const customCurrencyConversion = localStorage.getItem("customCurrencyConversion");
     const customCurrencyConversionPrice = localStorage.getItem("customCurrencyConversionPrice");
+    const savedTrips = localStorage.getItem("trips");
 
     if (savedGpsSetting) {
       setGpsEnabled(JSON.parse(savedGpsSetting));
@@ -70,7 +73,25 @@ function Settings() {
     if (customCurrencyConversionPrice) {
       setCustomConversionPrice(JSON.parse(customCurrencyConversionPrice));
     }
+    if (savedTrips) {
+      setTrips(JSON.parse(savedTrips));
+    }
 
+  }, []);
+  
+  // Listen for storage changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedTrips = localStorage.getItem("trips");
+      if (savedTrips) {
+        setTrips(JSON.parse(savedTrips));
+      }
+    };
+    
+    window.addEventListener('storageChange', handleStorageChange);
+    return () => {
+      window.removeEventListener('storageChange', handleStorageChange);
+    };
   }, []);
 
   const handleSaveSelectedLocation = (saveSelectedLocation: boolean) => {
@@ -144,11 +165,23 @@ function Settings() {
 
           <TabsContent value="trips">
             <div className="space-y-6">
-              <NewTripForm/>
-              <Card>
-                <h3 className="text-lg font-semibold mb-4 p-2">Your Trips</h3>
-                <TripList />
-              </Card>
+              {trips.length === 0 ? (
+                <NewTripForm />
+              ) : (
+                <Button 
+                  onClick={() => setShowNewTripForm(!showNewTripForm)} 
+                  className="w-full mb-4"
+                >
+                  {showNewTripForm ? "Cancel" : "Add New Trip"}
+                </Button>
+              )}
+              {showNewTripForm && trips.length > 0 && <NewTripForm />}
+              {trips.length > 0 && (
+                <Card>
+                  <h3 className="text-lg font-semibold mb-4 p-2">Your Trips</h3>
+                  <TripList />
+                </Card>
+              )}
             </div>
           </TabsContent>
 
