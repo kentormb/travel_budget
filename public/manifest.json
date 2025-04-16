@@ -2,7 +2,7 @@
 {
   "name": "Expenses Tracker",
   "short_name": "Expenses Tracker",
-  "description": "Track your travel expenses with ease",
+  "description": "Track your travel expenses with ease and stay on top of your budget.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
