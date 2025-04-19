@@ -2,7 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExpenseForm } from "@/components/expense/ExpenseForm";
 import { ExpenseList } from "@/components/ExpenseList";
 import { ListChecks, PieChart, Settings as SettingsIcon, Plus, Search, X } from "lucide-react";
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -72,6 +72,7 @@ const Index = () => {
   const [trips, setTrips] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const loadTripData = useCallback(() => {
     setLoading(true);
@@ -136,6 +137,8 @@ const Index = () => {
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");
+    searchInputRef.current.value = "";
+    searchInputRef.current?.focus();
   }, []);
 
   const tripList = useMemo(() => {
@@ -205,6 +208,7 @@ const Index = () => {
                 <div className="mx-2 relative w-full">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
+                      ref={searchInputRef}
                       type="text"
                       placeholder="Search expenses"
                       onChange={handleSearchChange}
