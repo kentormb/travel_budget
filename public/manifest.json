@@ -1,15 +1,15 @@
 
 {
-  "name": "Expenses Tracker",
-  "short_name": "Expenses Tracker",
-  "description": "Track your travel expenses with ease and stay on top of your budget.",
+  "name": "Travel Budget",
+  "short_name": "Travel Budget",
+  "description": "Track your travel expenses with ease",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "icons": [
     {
-      "src": "/assets/logo.png",
+      "src": "/assets/tb_logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

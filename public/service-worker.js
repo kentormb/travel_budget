@@ -1,5 +1,5 @@
 // service-worker.js
-const CACHE_NAME = "travel-expenses-cache-v35";
+const CACHE_NAME = "travel-expenses-cache-v36";
 
 /// Immediately take control of pages
 self.addEventListener("install", (event) => {
