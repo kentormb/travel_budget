@@ -24,10 +24,12 @@ function Settings() {
   const [currencyConversion, setCurrencyConversion] = useState<boolean>(false);
   const [customCurrencyConversion, setCustomCurrencyConversion] = useState<boolean>(false);
   const [customConversionPrice, setCustomConversionPrice] = useState<number>(1);
+  const [withdrawalAmount, setWithdrawalAmount] = useState<number>(0);
+  const [convertedWithdrawalAmount, setConvertedWithdrawalAmount] = useState<number>(0);
   const [openFrom, setOpenFrom] = useState(false);
   const [fromCurrency, setFromCurrency] = useState<string>("EUR");
   const [searchFrom, setSearchFrom] = useState<string>("");
-  const [trips, setTrips] = useState<any[]>([]);
+  const [trips, setTrips] = useState<never[]>([]);
   const [showNewTripForm, setShowNewTripForm] = useState(false);
 
   const [location, setLocation] = useState({
@@ -78,7 +80,7 @@ function Settings() {
     }
 
   }, []);
-  
+
   // Listen for storage changes
   useEffect(() => {
     const handleStorageChange = () => {
@@ -87,7 +89,7 @@ function Settings() {
         setTrips(JSON.parse(savedTrips));
       }
     };
-    
+
     window.addEventListener('storageChange', handleStorageChange);
     return () => {
       window.removeEventListener('storageChange', handleStorageChange);
@@ -168,8 +170,8 @@ function Settings() {
               {trips.length === 0 ? (
                 <NewTripForm />
               ) : (
-                <Button 
-                  onClick={() => setShowNewTripForm(!showNewTripForm)} 
+                <Button
+                  onClick={() => setShowNewTripForm(!showNewTripForm)}
                   className="w-full mb-4"
                 >
                   {showNewTripForm ? "Cancel" : "Add New Trip"}
@@ -283,6 +285,41 @@ function Settings() {
                     </div>
                     {customCurrencyConversion && (
                       <p className="mt-2 text-sm text-gray-600">
+                        <p className="mt-2">
+                          <div>
+                            <span className="mr-2">I made a withdrawal of</span>
+                            <input
+                                className="border-b border-gray-300 p-1 w-3/12"
+                                value={withdrawalAmount}
+                                onChange={(e) => {
+                                  setWithdrawalAmount(+e.target.value)
+                                  if (convertedWithdrawalAmount && +e.target.value && convertedWithdrawalAmount > 0 && +e.target.value > 0) {
+                                    handleCustomCurrencyConversionPrice(
+                                        convertedWithdrawalAmount / +e.target.value)
+                                  }
+                                }}
+                            />
+                            <span className="mx-2">{fromCurrency}</span>
+                          </div>
+                          <div className="mt-2">
+                            <span className="mr-2">It costed me</span>
+                            <input
+                                className="border-b border-gray-300 p-1 w-3/12"
+                                value={convertedWithdrawalAmount}
+                                onChange={(e) => {
+                                  setConvertedWithdrawalAmount(+e.target.value);
+                                  if (withdrawalAmount && +e.target.value && withdrawalAmount > 0 && +e.target.value > 0) {
+                                    handleCustomCurrencyConversionPrice(
+                                        +e.target.value / withdrawalAmount)
+                                  }
+                                }}
+                            />
+                            <span className="mx-2">{currentCurrency()}</span>
+                          </div>
+                        </p>
+                        <p className="mt-3">
+                          Conversion Price
+                        </p>
                         <input
                             type="number"
                             placeholder="Enter a custom conversion price"
